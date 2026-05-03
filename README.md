@@ -1,4 +1,4 @@
-# Fisioterapia Pélvica — Micro Sistema de Controle e Gestão
+# Fisioterapia Pélvica — Sistema de Gestão
 
 Sistema web PWA para gerenciar pacientes, agenda e controle financeiro. Desenvolvido para uso em smartphone e tablet (mobile-first).
 
