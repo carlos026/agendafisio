@@ -126,9 +126,15 @@ export default function AgendaPage() {
                       <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
                     </div>
 
-                    {/* Hora e notas */}
+                    {/* Hora, tipo, sessão e notas */}
                     <div className="appointment-meta">
                       <span>🕐 {apt.time}</span>
+                      {apt.serviceType && <span className="apt-service-type">{apt.serviceType}</span>}
+                      {apt.totalSessions && (
+                        <span className="apt-session-info">
+                          Sessão {apt.sessionNumber ?? '?'}/{apt.totalSessions}
+                        </span>
+                      )}
                       {apt.notes && <span>📝 {apt.notes}</span>}
                     </div>
 
@@ -182,6 +188,7 @@ export default function AgendaPage() {
         <AppointmentForm
           appointment={editing}
           patients={patients}
+          appointments={appointments}
           settings={settings}
           onSave={handleSave}
           onClose={closeForm}

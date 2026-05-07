@@ -17,6 +17,9 @@ export function add(data) {
   const appointment = {
     id: generateId(),
     patientId: data.patientId,
+    serviceType: data.serviceType || '',
+    totalSessions:  data.totalSessions  ? parseInt(data.totalSessions,  10) : null,
+    sessionNumber:  data.sessionNumber  ? parseInt(data.sessionNumber,  10) : null,
     date: data.date,
     time: data.time,
     status: data.status || 'scheduled',
@@ -35,6 +38,9 @@ export function update(id, data) {
       ? {
           ...a,
           patientId: data.patientId,
+          serviceType: data.serviceType || '',
+          totalSessions: data.totalSessions ? parseInt(data.totalSessions, 10) : null,
+          sessionNumber: data.sessionNumber ? parseInt(data.sessionNumber, 10) : null,
           date: data.date,
           time: data.time,
           status: data.status,
