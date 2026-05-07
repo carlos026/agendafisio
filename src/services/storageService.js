@@ -2,6 +2,7 @@
 const KEYS = {
   PATIENTS: 'fp_patients',
   APPOINTMENTS: 'fp_appointments',
+  SETTINGS: 'fp_settings',
 }
 
 function getItem(key) {
@@ -13,8 +14,17 @@ function getItem(key) {
   }
 }
 
+function getObject(key) {
+  try {
+    const data = localStorage.getItem(key)
+    return data ? JSON.parse(data) : {}
+  } catch {
+    return {}
+  }
+}
+
 function setItem(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-export { KEYS, getItem, setItem }
+export { KEYS, getItem, getObject, setItem }

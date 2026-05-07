@@ -6,7 +6,7 @@
 }
 
 :root {
-  --primary: #7c3aed;
+  --primary: #f05deb;
   --primary-light: #ede9fe;
   --primary-dark: #5b21b6;
   --success: #10b981;
@@ -828,3 +828,48 @@ body {
 .font-bold { font-weight: 700; }
 .font-semibold { font-weight: 600; }
 .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ===== Settings Page ===== */
+.settings-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-100);
+}
+
+.settings-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 6px 0;
+}
+
+.settings-description {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  margin: 0 0 16px 0;
+  line-height: 1.45;
+}
+
+.settings-info {
+  background: #fefce8;
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: #92400e;
+  line-height: 1.45;
+}
+
+.settings-success {
+  margin-top: 12px;
+  background: var(--success-light);
+  color: #065f46;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+}

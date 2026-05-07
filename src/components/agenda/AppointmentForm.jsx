@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Modal from '../ui/Modal'
 import { getTodayString } from '../../utils/helpers'
 
-export default function AppointmentForm({ appointment, patients, onSave, onClose }) {
+export default function AppointmentForm({ appointment, patients, settings, onSave, onClose }) {
   const [form, setForm] = useState({
     patientId: appointment?.patientId || '',
     date:      appointment?.date      || getTodayString(),
@@ -13,6 +13,16 @@ export default function AppointmentForm({ appointment, patients, onSave, onClose
     notes:     appointment?.notes     || '',
   })
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (appointment || !form.patientId || !settings) return
+    const patient = patients.find(p => p.id === form.patientId)
+    if (!patient?.convenio) return
+    const price = patient.convenio === 'convenio'
+      ? settings.convenioPrice
+      : settings.particularPrice
+    if (price > 0) setForm(prev => ({ ...prev, value: price.toString() }))
+  }, [form.patientId])
 
   function set(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))

@@ -11,7 +11,7 @@ const STATUS_MAP = {
 }
 
 export default function AgendaPage() {
-  const { patients, appointments, refreshAppointments } = useApp()
+  const { patients, appointments, settings, refreshAppointments } = useApp()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState(null)
   const [filter, setFilter]     = useState('upcoming')
@@ -182,6 +182,7 @@ export default function AgendaPage() {
         <AppointmentForm
           appointment={editing}
           patients={patients}
+          settings={settings}
           onSave={handleSave}
           onClose={closeForm}
         />

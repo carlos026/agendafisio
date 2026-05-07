@@ -3,9 +3,10 @@ import Modal from '../ui/Modal'
 
 export default function PatientForm({ patient, onSave, onClose }) {
   const [form, setForm] = useState({
-    name:  patient?.name  || '',
-    phone: patient?.phone || '',
-    notes: patient?.notes || '',
+    name:     patient?.name     || '',
+    phone:    patient?.phone    || '',
+    notes:    patient?.notes    || '',
+    convenio: patient?.convenio || '',
   })
   const [error, setError] = useState('')
 
@@ -58,6 +59,19 @@ export default function PatientForm({ patient, onSave, onClose }) {
           value={form.phone}
           onChange={e => set('phone', e.target.value)}
         />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Convênio</label>
+        <select
+          className="form-select"
+          value={form.convenio}
+          onChange={e => set('convenio', e.target.value)}
+        >
+          <option value="">Não informado</option>
+          <option value="convenio">Convênio</option>
+          <option value="particular">Particular</option>
+        </select>
       </div>
 
       <div className="form-group">
