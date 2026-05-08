@@ -21,17 +21,6 @@ export default function AppointmentForm({ appointment, patients, appointments, s
 
   const hasTotalSessions = form.totalSessions.trim() !== ''
 
-  // Auto-preenche valor (convênio) ao trocar paciente
-  useEffect(() => {
-    if (appointment || !form.patientId || !settings) return
-    const patient = patients.find(p => p.id === form.patientId)
-    if (!patient?.convenio) return
-    const price = patient.convenio === 'convenio'
-      ? settings.convenioPrice
-      : settings.particularPrice
-    if (price > 0) setForm(prev => ({ ...prev, value: price.toString() }))
-  }, [form.patientId])
-
   // Auto-preenche sessionNumber quando patientId ou totalSessions muda (só em criação)
   useEffect(() => {
     if (appointment) return
@@ -51,14 +40,33 @@ export default function AppointmentForm({ appointment, patients, appointments, s
     ).length
   }
 
+  function lookupPrice(patientId, serviceTypeName) {
+    if (!patientId || !serviceTypeName || !settings) return null
+    const patient = patients.find(p => p.id === patientId)
+    if (!patient?.convenio) return null
+    const typeObj = (settings.serviceTypes || []).find(
+      t => (typeof t === 'string' ? t : t.name) === serviceTypeName
+    )
+    if (!typeObj || typeof typeObj === 'string') return null
+    const price = patient.convenio === 'convenio' ? typeObj.convenioPrice : typeObj.particularPrice
+    return price > 0 ? price : null
+  }
+
   function set(field, value) {
     setForm(prev => {
       const next = { ...prev, [field]: value }
 
       if (!appointment) {
-        const patientId    = field === 'patientId'   ? value : prev.patientId
-        const serviceType  = field === 'serviceType' ? value : prev.serviceType
+        const patientId   = field === 'patientId'   ? value : prev.patientId
+        const serviceType = field === 'serviceType' ? value : prev.serviceType
 
+        // Auto-preenche valor com base no tipo + convênio do paciente
+        if (field === 'patientId' || field === 'serviceType') {
+          const price = lookupPrice(patientId, serviceType)
+          if (price !== null) next.value = price.toString()
+        }
+
+        // Auto-preenche Observações = "Avaliação" no 1º atendimento de Fisioterapia Pélvica
         if (serviceType === 'Fisioterapia Pélvica' && patientId) {
           if (countPastAppointments(patientId) === 0) {
             next.notes = 'Avaliação'
@@ -67,7 +75,6 @@ export default function AppointmentForm({ appointment, patients, appointments, s
           (field === 'serviceType' && value !== 'Fisioterapia Pélvica') ||
           (field === 'patientId')
         ) {
-          // Limpa o auto-fill se mudar de tipo ou de paciente
           if (prev.notes === 'Avaliação') next.notes = ''
         }
       }
@@ -133,9 +140,10 @@ export default function AppointmentForm({ appointment, patients, appointments, s
             onChange={e => set('serviceType', e.target.value)}
           >
             <option value="">Selecione o tipo</option>
-            {serviceTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
+            {serviceTypes.map(type => {
+              const name = typeof type === 'string' ? type : type.name
+              return <option key={name} value={name}>{name}</option>
+            })}
           </select>
         )}
       </div>

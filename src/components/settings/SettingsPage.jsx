@@ -2,81 +2,124 @@ import React, { useState } from 'react'
 import * as settingsService from '../../services/settingsService'
 import { useApp } from '../../App'
 
+function normalizeTypes(raw) {
+  return (raw || []).map(t =>
+    typeof t === 'string'
+      ? { name: t, convenioPrice: '', particularPrice: '' }
+      : { ...t, convenioPrice: t.convenioPrice > 0 ? t.convenioPrice.toString() : '', particularPrice: t.particularPrice > 0 ? t.particularPrice.toString() : '' }
+  )
+}
+
+function serializeTypes(types) {
+  return types.map(t => ({
+    name: t.name,
+    convenioPrice:  parseFloat(t.convenioPrice)  || 0,
+    particularPrice: parseFloat(t.particularPrice) || 0,
+  }))
+}
+
 export default function SettingsPage() {
   const { refreshSettings } = useApp()
   const initial = settingsService.getSettings()
 
-  const [form, setForm] = useState({
-    convenioPrice:  initial.convenioPrice.toString(),
-    particularPrice: initial.particularPrice.toString(),
-  })
-  const [saved, setSaved] = useState(false)
-
-  const [serviceTypes, setServiceTypes] = useState(initial.serviceTypes || [])
+  const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes))
   const [newType, setNewType] = useState('')
   const [typeError, setTypeError] = useState('')
 
-  function set(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }))
-    setSaved(false)
-  }
-
-  function handleSave() {
-    settingsService.saveSettings({
-      convenioPrice:  parseFloat(form.convenioPrice)  || 0,
-      particularPrice: parseFloat(form.particularPrice) || 0,
-    })
+  function persist(types) {
+    settingsService.saveSettings({ serviceTypes: serializeTypes(types) })
     refreshSettings()
-    setSaved(true)
   }
 
   function handleAddType() {
     const trimmed = newType.trim()
     if (!trimmed) { setTypeError('Informe um nome para o tipo'); return }
-    if (serviceTypes.includes(trimmed)) { setTypeError('Esse tipo já existe'); return }
-    const updated = [...serviceTypes, trimmed]
+    if (serviceTypes.some(t => t.name === trimmed)) { setTypeError('Esse tipo já existe'); return }
+    const updated = [...serviceTypes, { name: trimmed, convenioPrice: '', particularPrice: '' }]
     setServiceTypes(updated)
-    settingsService.saveSettings({ serviceTypes: updated })
-    refreshSettings()
+    persist(updated)
     setNewType('')
     setTypeError('')
   }
 
-  function handleRemoveType(type) {
-    const updated = serviceTypes.filter(t => t !== type)
+  function handleRemoveType(index) {
+    const updated = serviceTypes.filter((_, i) => i !== index)
     setServiceTypes(updated)
-    settingsService.saveSettings({ serviceTypes: updated })
-    refreshSettings()
+    persist(updated)
+  }
+
+  function handlePriceChange(index, field, value) {
+    setServiceTypes(prev => prev.map((t, i) => i === index ? { ...t, [field]: value } : t))
+  }
+
+  function handlePriceBlur() {
+    setServiceTypes(prev => {
+      persist(prev)
+      return prev
+    })
   }
 
   return (
     <div>
-      {/* Tipos de Atendimento */}
       <div className="settings-section">
         <h2 className="settings-title">Tipos de Atendimento</h2>
         <p className="settings-description">
-          Os tipos cadastrados aqui aparecem como opção obrigatória ao criar um agendamento.
+          Defina os tipos e seus valores padrão por convênio. O valor é preenchido automaticamente ao criar um agendamento.
         </p>
 
+        <div className="settings-info">
+          As alterações de preço se aplicam apenas a novos agendamentos. Registros anteriores não são afetados.
+        </div>
+
         {serviceTypes.length > 0 && (
-          <ul className="service-type-list">
-            {serviceTypes.map(type => (
-              <li key={type} className="service-type-item">
-                <span className="service-type-label">{type}</span>
-                <button
-                  className="service-type-remove"
-                  onClick={() => handleRemoveType(type)}
-                  title="Remover"
-                >
-                  ✕
-                </button>
+          <ul className="service-type-list" style={{ marginTop: '16px' }}>
+            {serviceTypes.map((type, index) => (
+              <li key={type.name} className="service-type-item service-type-item--with-prices">
+                <div className="service-type-header">
+                  <span className="service-type-label">{type.name}</span>
+                  <button
+                    className="service-type-remove"
+                    onClick={() => handleRemoveType(index)}
+                    title="Remover"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="service-type-prices">
+                  <div>
+                    <div className="service-type-price-label">Convênio (R$)</div>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder="0,00"
+                      step="0.01"
+                      min="0"
+                      value={type.convenioPrice}
+                      onChange={e => handlePriceChange(index, 'convenioPrice', e.target.value)}
+                      onBlur={() => handlePriceBlur(index)}
+                    />
+                  </div>
+                  <div>
+                    <div className="service-type-price-label">Particular (R$)</div>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder="0,00"
+                      step="0.01"
+                      min="0"
+                      value={type.particularPrice}
+                      onChange={e => handlePriceChange(index, 'particularPrice', e.target.value)}
+                      onBlur={() => handlePriceBlur(index)}
+                    />
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
         )}
 
         {serviceTypes.length === 0 && (
-          <p className="text-xs text-muted" style={{ marginBottom: '12px' }}>
+          <p className="text-xs text-muted" style={{ margin: '16px 0 12px' }}>
             Nenhum tipo cadastrado ainda.
           </p>
         )}
@@ -95,54 +138,6 @@ export default function SettingsPage() {
           </button>
         </div>
         {typeError && <div className="alert-error" style={{ marginTop: '8px' }}>{typeError}</div>}
-      </div>
-
-      {/* Valores por convênio */}
-      <div className="settings-section">
-        <h2 className="settings-title">Valores padrão por convênio</h2>
-        <p className="settings-description">
-          Ao criar um agendamento, o valor será preenchido automaticamente com base no convênio do paciente.
-        </p>
-
-        <div className="settings-info">
-          As alterações feitas aqui se aplicam apenas a novos agendamentos. Registros anteriores não são afetados.
-        </div>
-
-        <div className="form-group" style={{ marginTop: '24px' }}>
-          <label className="form-label">Valor padrão — Convênio (R$)</label>
-          <input
-            type="number"
-            className="form-input"
-            placeholder="0,00"
-            step="0.01"
-            min="0"
-            value={form.convenioPrice}
-            onChange={e => set('convenioPrice', e.target.value)}
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Valor padrão — Particular (R$)</label>
-          <input
-            type="number"
-            className="form-input"
-            placeholder="0,00"
-            step="0.01"
-            min="0"
-            value={form.particularPrice}
-            onChange={e => set('particularPrice', e.target.value)}
-          />
-        </div>
-
-        <button className="btn btn-primary btn-full" onClick={handleSave}>
-          Salvar configurações
-        </button>
-
-        {saved && (
-          <div className="settings-success">
-            Configurações salvas com sucesso!
-          </div>
-        )}
       </div>
     </div>
   )

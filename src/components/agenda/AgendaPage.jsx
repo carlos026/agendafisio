@@ -11,10 +11,11 @@ const STATUS_MAP = {
 }
 
 export default function AgendaPage() {
-  const { patients, appointments, settings, refreshAppointments } = useApp()
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing]   = useState(null)
-  const [filter, setFilter]     = useState('upcoming')
+  const { patients, appointments, settings, refreshAppointments, setPage } = useApp()
+  const [showForm, setShowForm]           = useState(false)
+  const [editing, setEditing]             = useState(null)
+  const [filter, setFilter]               = useState('upcoming')
+  const [noPatientAlert, setNoPatientAlert] = useState(false)
 
   const today = getTodayString()
 
@@ -174,10 +175,34 @@ export default function AgendaPage() {
         ))
       )}
 
+      {/* Aviso: sem pacientes cadastrados */}
+      {noPatientAlert && (
+        <div className="no-patient-alert">
+          <span>Cadastre um paciente antes de agendar.</span>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => setPage('patients')}
+          >
+            Ir para Pacientes
+          </button>
+          <button
+            className="no-patient-alert-close"
+            onClick={() => setNoPatientAlert(false)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Botão flutuante */}
       <button
         className="fab"
-        onClick={() => { setEditing(null); setShowForm(true) }}
+        onClick={() => {
+          if (patients.length === 0) { setNoPatientAlert(true); return }
+          setNoPatientAlert(false)
+          setEditing(null)
+          setShowForm(true)
+        }}
         title="Novo agendamento"
       >
         +
