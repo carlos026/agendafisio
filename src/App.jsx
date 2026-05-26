@@ -9,6 +9,7 @@ import PatientsPage from './components/patients/PatientsPage'
 import AgendaPage from './components/agenda/AgendaPage'
 import FinancePage from './components/finance/FinancePage'
 import SettingsPage from './components/settings/SettingsPage'
+import ImportExportPage from './components/importexport/ImportExportPage'
 
 // Contexto global — qualquer componente pode acessar pacientes e agendamentos
 export const AppContext = createContext()
@@ -22,7 +23,8 @@ const PAGE_TITLES = {
   patients: 'Pacientes',
   agenda: 'Agenda',
   finance: 'Financeiro',
-  settings: 'Configurações',
+  settings:     'Configurações',
+  importexport: 'Importar / Exportar',
 }
 
 export default function App() {
@@ -65,7 +67,8 @@ export default function App() {
           {page === 'patients'  && <PatientsPage />}
           {page === 'agenda'    && <AgendaPage />}
           {page === 'finance'   && <FinancePage />}
-          {page === 'settings'  && <SettingsPage />}
+          {page === 'settings'      && <SettingsPage />}
+          {page === 'importexport' && <ImportExportPage />}
         </main>
 
         <BottomNav />

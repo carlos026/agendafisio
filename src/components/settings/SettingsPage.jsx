@@ -19,7 +19,7 @@ function serializeTypes(types) {
 }
 
 export default function SettingsPage() {
-  const { refreshSettings } = useApp()
+  const { refreshSettings, setPage } = useApp()
   const initial = settingsService.getSettings()
 
   const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes))
@@ -138,6 +138,21 @@ export default function SettingsPage() {
           </button>
         </div>
         {typeError && <div className="alert-error" style={{ marginTop: '8px' }}>{typeError}</div>}
+      </div>
+
+      {/* Seção de Importação/Exportação */}
+      <div className="settings-section">
+        <h2 className="settings-title">Importar / Exportar</h2>
+        <p className="settings-description">
+          Importe agendamentos de uma planilha Excel ou exporte todos os dados do sistema para um arquivo .xlsx.
+        </p>
+        <button
+          className="btn btn-primary btn-full"
+          style={{ marginTop: '8px' }}
+          onClick={() => setPage('importexport')}
+        >
+          📊 Gerenciar Planilhas
+        </button>
       </div>
     </div>
   )

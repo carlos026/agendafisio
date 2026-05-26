@@ -1018,3 +1018,304 @@ body {
   flex: 1;
   margin: 0;
 }
+
+/* ===== Importar / Exportar ===== */
+.ie-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ie-back-btn {
+  background: none;
+  border: none;
+  color: var(--primary-dark);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 4px 0 8px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ie-back-btn:hover {
+  text-decoration: underline;
+}
+
+.ie-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.ie-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 6px;
+}
+
+.ie-description {
+  font-size: 0.83rem;
+  color: var(--gray-500);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.ie-drop-area {
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.ie-drop-area:hover,
+.ie-drop-area:active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.ie-drop-area--selected {
+  border-color: var(--success);
+  background: var(--success-light);
+}
+
+.ie-file-icon {
+  font-size: 2rem;
+  margin-bottom: 6px;
+}
+
+.ie-file-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  word-break: break-all;
+}
+
+.ie-file-hint {
+  font-size: 0.78rem;
+  color: var(--gray-500);
+  margin-top: 4px;
+}
+
+/* Preview de importação */
+.ie-preview {
+  margin-top: 16px;
+}
+
+.ie-preview-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ie-stat {
+  background: var(--primary-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.ie-stat--warn {
+  background: var(--warning-light);
+}
+
+.ie-stat-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  line-height: 1;
+}
+
+.ie-stat--warn .ie-stat-num {
+  color: var(--warning);
+}
+
+.ie-stat-label {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  text-align: center;
+  margin-top: 2px;
+}
+
+.ie-new-patients {
+  font-size: 0.8rem;
+  color: var(--gray-700);
+  background: var(--success-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.ie-skipped {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  background: var(--warning-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.ie-skipped summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.ie-skipped ul {
+  margin-top: 6px;
+  padding-left: 16px;
+  line-height: 1.8;
+}
+
+/* Tabela de preview */
+.ie-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  margin-bottom: 12px;
+}
+
+.ie-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.ie-table th {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gray-200);
+  text-align: left;
+}
+
+.ie-table td {
+  padding: 5px 10px;
+  color: var(--gray-700);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.ie-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ie-table tr.ie-row-new td {
+  background: #f0fdf4;
+}
+
+.ie-notes-cell {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ie-badge-new {
+  display: inline-block;
+  margin-left: 4px;
+  background: var(--success);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ie-table-more {
+  font-size: 0.73rem;
+  color: var(--gray-400);
+  text-align: center;
+  padding: 6px;
+  background: var(--gray-50);
+}
+
+.ie-confirm-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Resultado pós-importação */
+.ie-result {
+  margin-top: 16px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.ie-result-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.ie-result-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+}
+
+.ie-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
+
+/* Seção de exportação */
+.ie-export-info {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.ie-export-count {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.ie-export-num {
+  font-weight: 700;
+  color: var(--gray-900);
+  font-size: 1rem;
+  margin-right: 3px;
+}
+
+.ie-export-msg {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.ie-export-msg--success {
+  background: var(--success-light);
+  color: #065f46;
+}
+
+.ie-export-msg--error {
+  background: var(--danger-light);
+  color: #991b1b;
+}
