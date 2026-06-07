@@ -4,22 +4,26 @@ import { getTodayString } from '../../utils/helpers'
 
 export default function AppointmentForm({ appointment, patients, appointments, settings, onSave, onClose }) {
   const serviceTypes = settings?.serviceTypes || []
+  // Apenas pacientes ativos aparecem no dropdown de novo agendamento
+  const activePatients = patients.filter(p => p.active !== false)
 
   const [form, setForm] = useState({
-    patientId:     appointment?.patientId     || '',
-    serviceType:   appointment?.serviceType   || '',
-    totalSessions: appointment?.totalSessions?.toString() || '',
-    sessionNumber: appointment?.sessionNumber?.toString() || '',
-    date:          appointment?.date          || getTodayString(),
-    time:          appointment?.time          || '09:00',
-    status:        appointment?.status        || 'scheduled',
-    value:         appointment?.value?.toString() || '',
-    paid:          appointment?.paid          || false,
-    notes:         appointment?.notes         || '',
+    patientId:       appointment?.patientId       || '',
+    serviceType:     appointment?.serviceType     || '',
+    appointmentType: appointment?.appointmentType || 'sessao',
+    totalSessions:   appointment?.totalSessions?.toString() || '',
+    sessionNumber:   appointment?.sessionNumber?.toString() || '',
+    date:            appointment?.date            || getTodayString(),
+    time:            appointment?.time            || '09:00',
+    status:          appointment?.status          || 'scheduled',
+    value:           appointment?.value?.toString() || '',
+    paid:            appointment?.paid            || false,
+    notes:           appointment?.notes           || '',
   })
   const [error, setError] = useState('')
 
-  const hasTotalSessions = form.totalSessions.trim() !== ''
+  const isAvaliacao    = form.appointmentType === 'avaliacao'
+  const hasTotalSessions = !isAvaliacao && form.totalSessions.trim() !== ''
 
   // Auto-preenche sessionNumber quando patientId ou totalSessions muda (só em criação)
   useEffect(() => {
@@ -56,6 +60,12 @@ export default function AppointmentForm({ appointment, patients, appointments, s
     setForm(prev => {
       const next = { ...prev, [field]: value }
 
+      // Ao mudar para Avaliação: limpa os campos de sessão
+      if (field === 'appointmentType' && value === 'avaliacao') {
+        next.totalSessions = ''
+        next.sessionNumber = ''
+      }
+
       if (!appointment) {
         const patientId   = field === 'patientId'   ? value : prev.patientId
         const serviceType = field === 'serviceType' ? value : prev.serviceType
@@ -66,16 +76,20 @@ export default function AppointmentForm({ appointment, patients, appointments, s
           if (price !== null) next.value = price.toString()
         }
 
-        // Auto-preenche Observações = "Avaliação" no 1º atendimento de Fisioterapia Pélvica
+        // 1º atendimento de Fisioterapia Pélvica → marca como Avaliação automaticamente
         if (serviceType === 'Fisioterapia Pélvica' && patientId) {
           if (countPastAppointments(patientId) === 0) {
-            next.notes = 'Avaliação'
+            next.notes           = 'Avaliação'
+            next.appointmentType = 'avaliacao'
+            next.totalSessions   = ''
+            next.sessionNumber   = ''
           }
         } else if (
           (field === 'serviceType' && value !== 'Fisioterapia Pélvica') ||
           (field === 'patientId')
         ) {
           if (prev.notes === 'Avaliação') next.notes = ''
+          if (prev.appointmentType === 'avaliacao') next.appointmentType = 'sessao'
         }
       }
 
@@ -85,11 +99,11 @@ export default function AppointmentForm({ appointment, patients, appointments, s
   }
 
   function handleSubmit() {
-    if (!form.patientId)                         { setError('Selecione um paciente'); return }
-    if (!form.serviceType)                       { setError('Selecione o tipo de atendimento'); return }
-    if (hasTotalSessions && !form.sessionNumber) { setError('Informe o número da sessão'); return }
-    if (!form.date)                              { setError('Informe a data'); return }
-    if (!form.time)                              { setError('Informe o horário'); return }
+    if (!form.patientId)                             { setError('Selecione um paciente'); return }
+    if (!form.serviceType)                           { setError('Selecione o tipo de atendimento'); return }
+    if (hasTotalSessions && !form.sessionNumber)     { setError('Informe o número da sessão'); return }
+    if (!form.date)                                  { setError('Informe a data'); return }
+    if (!form.time)                                  { setError('Informe o horário'); return }
     onSave(form)
   }
 
@@ -117,11 +131,11 @@ export default function AppointmentForm({ appointment, patients, appointments, s
           onChange={e => set('patientId', e.target.value)}
         >
           <option value="">Selecione um paciente</option>
-          {patients.map(p => (
+          {activePatients.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
-        {patients.length === 0 && (
+        {activePatients.length === 0 && (
           <span className="text-xs text-muted">Cadastre um paciente primeiro</span>
         )}
       </div>
@@ -148,35 +162,58 @@ export default function AppointmentForm({ appointment, patients, appointments, s
         )}
       </div>
 
-      {/* Qtd. de Sessões + Sessão */}
-      <div className="form-row">
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Qtd. de Sessões</label>
-          <input
-            type="number"
-            className="form-input"
-            placeholder="Ex: 10"
-            min="1"
-            step="1"
-            value={form.totalSessions}
-            onChange={e => set('totalSessions', e.target.value)}
-          />
+      {/* Tipo de Consulta: Avaliação | Sessão */}
+      <div className="form-group">
+        <label className="form-label">Tipo de Consulta</label>
+        <div className="appt-type-toggle">
+          <button
+            type="button"
+            className={`appt-type-btn ${isAvaliacao ? 'appt-type-btn--active' : ''}`}
+            onClick={() => set('appointmentType', 'avaliacao')}
+          >
+            Avaliação
+          </button>
+          <button
+            type="button"
+            className={`appt-type-btn ${!isAvaliacao ? 'appt-type-btn--active' : ''}`}
+            onClick={() => set('appointmentType', 'sessao')}
+          >
+            Sessão
+          </button>
         </div>
-        {hasTotalSessions && (
+      </div>
+
+      {/* Qtd. de Sessões + Sessão (apenas no modo Sessão) */}
+      {!isAvaliacao && (
+        <div className="form-row">
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Sessão *</label>
+            <label className="form-label">Qtd. de Sessões</label>
             <input
               type="number"
               className="form-input"
-              placeholder="Ex: 1"
+              placeholder="Ex: 10"
               min="1"
               step="1"
-              value={form.sessionNumber}
-              onChange={e => set('sessionNumber', e.target.value)}
+              value={form.totalSessions}
+              onChange={e => set('totalSessions', e.target.value)}
             />
           </div>
-        )}
-      </div>
+          {hasTotalSessions && (
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Sessão *</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="Ex: 1"
+                min="1"
+                step="1"
+                value={form.sessionNumber}
+                onChange={e => set('sessionNumber', e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Data e Hora */}
       <div className="form-row">

@@ -2,11 +2,14 @@ import React, { useState } from 'react'
 import Modal from '../ui/Modal'
 
 export default function PatientForm({ patient, onSave, onClose }) {
+  const isEditing = Boolean(patient)
+
   const [form, setForm] = useState({
     name:     patient?.name     || '',
     phone:    patient?.phone    || '',
     notes:    patient?.notes    || '',
     convenio: patient?.convenio || '',
+    active:   patient?.active !== false, // novos pacientes sempre ativos
   })
   const [error, setError] = useState('')
 
@@ -83,6 +86,37 @@ export default function PatientForm({ patient, onSave, onClose }) {
           onChange={e => set('notes', e.target.value)}
         />
       </div>
+
+      {/* Situação — só exibida na edição, nunca na criação */}
+      {isEditing && (
+        <div className="patient-status-section">
+          <div className="patient-status-divider" />
+          <div className="patient-status-label">Situação do paciente</div>
+
+          <div className="patient-status-toggle">
+            <button
+              type="button"
+              className={`patient-status-btn patient-status-btn--ativo ${form.active ? 'active' : ''}`}
+              onClick={() => set('active', true)}
+            >
+              ✓ Ativo
+            </button>
+            <button
+              type="button"
+              className={`patient-status-btn patient-status-btn--inativo ${!form.active ? 'active' : ''}`}
+              onClick={() => set('active', false)}
+            >
+              Desistiu
+            </button>
+          </div>
+
+          {!form.active && (
+            <div className="patient-status-warning">
+              Este paciente não aparecerá na lista de ativos nem no formulário de novo agendamento. O histórico de atendimentos é preservado.
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   )
 }

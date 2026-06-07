@@ -1319,3 +1319,454 @@ body {
   background: var(--danger-light);
   color: #991b1b;
 }
+
+/* ===== Toggle Avaliação / Sessão no formulário ===== */
+.appt-type-toggle {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.appt-type-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  background: var(--white);
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.appt-type-btn:not(:last-child) {
+  border-right: 1.5px solid var(--gray-300);
+}
+
+.appt-type-btn--active {
+  background: var(--primary);
+  color: var(--white);
+}
+
+/* Badge "Avaliação" no card da agenda */
+.apt-badge-avaliacao {
+  display: inline-flex;
+  align-items: center;
+  background: #fdf4ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ===== Toggle de visualização do Financeiro ===== */
+.finance-view-toggle {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.finance-view-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: var(--white);
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.finance-view-btn:not(:last-child) {
+  border-right: 1.5px solid var(--gray-300);
+}
+
+.finance-view-btn.active {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.pending-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--danger);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  line-height: 1;
+}
+
+.finance-view-btn.active .pending-count-badge {
+  background: rgba(255,255,255,0.3);
+}
+
+/* ===== Card de resumo geral de pendências ===== */
+.pending-summary-card {
+  background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.pending-summary-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #b91c1c;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.pending-summary-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #991b1b;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.pending-summary-sub {
+  font-size: 0.8rem;
+  color: #b91c1c;
+  opacity: 0.75;
+}
+
+/* ===== Card de paciente com pendências ===== */
+.pending-patient-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--danger);
+  overflow: hidden;
+}
+
+.pending-patient-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  gap: 8px;
+}
+
+.pending-patient-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-patient-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pending-patient-count {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.pending-patient-total {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+/* ===== Linhas de atendimentos pendentes ===== */
+.pending-apt-list {
+  border-top: 1px solid var(--gray-100);
+}
+
+.pending-apt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.pending-apt-row:last-child {
+  border-bottom: none;
+}
+
+.pending-apt-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-apt-date {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.pending-apt-time {
+  font-size: 0.78rem;
+  color: var(--gray-500);
+}
+
+.pending-apt-type {
+  font-size: 0.72rem;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.pending-apt-notes {
+  font-size: 0.72rem;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.pending-apt-avaliacao {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #fdf4ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pending-apt-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pending-apt-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.pending-pay-btn {
+  border: 1.5px solid var(--success);
+  background: var(--success-light);
+  color: #065f46;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.pending-pay-btn:hover {
+  background: var(--success);
+  color: var(--white);
+}
+
+/* ===== Botão "Quitar tudo" ===== */
+.pending-mark-all {
+  padding: 10px 16px;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pending-mark-all-btn {
+  background: var(--success);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pending-mark-all-btn:hover {
+  opacity: 0.88;
+}
+
+/* ===== Situação do paciente (toggle no formulário de edição) ===== */
+.patient-status-section {
+  margin-top: 4px;
+}
+
+.patient-status-divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 16px 0 14px;
+}
+
+.patient-status-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.patient-status-toggle {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.patient-status-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: var(--white);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: var(--gray-400);
+}
+
+.patient-status-btn:not(:last-child) {
+  border-right: 1.5px solid var(--gray-300);
+}
+
+.patient-status-btn--ativo.active {
+  background: var(--success);
+  color: var(--white);
+}
+
+.patient-status-btn--inativo.active {
+  background: var(--gray-500);
+  color: var(--white);
+}
+
+.patient-status-warning {
+  margin-top: 10px;
+  background: var(--warning-light);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: var(--gray-700);
+  line-height: 1.5;
+}
+
+/* ===== Paciente inativo no card da lista ===== */
+.patient-card--inactive {
+  opacity: 0.65;
+}
+
+.patient-avatar--inactive {
+  background: var(--gray-300);
+  color: var(--gray-500);
+}
+
+.patient-inactive-badge {
+  display: inline-block;
+  margin-left: 7px;
+  background: var(--gray-200);
+  color: var(--gray-500);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* ===== Seção "Desistiram (N)" na lista de pacientes ===== */
+.inactive-section {
+  margin-top: 24px;
+}
+
+.inactive-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--gray-200);
+  padding: 12px 4px 10px;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.inactive-section-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  letter-spacing: 0.02em;
+}
+
+.inactive-section-chevron {
+  font-size: 0.65rem;
+  color: var(--gray-400);
+}
+
+/* ===== Chips de filtro por mês no Histórico ===== */
+.history-month-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-month-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.history-month-chip {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-full);
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.history-month-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--white);
+}
