@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Modal from '../ui/Modal'
+import AvailableSlotsModal from './AvailableSlotsModal'
 import { getTodayString } from '../../utils/helpers'
 
 export default function AppointmentForm({ appointment, patients, appointments, settings, onSave, onClose }) {
@@ -20,7 +21,8 @@ export default function AppointmentForm({ appointment, patients, appointments, s
     paid:            appointment?.paid            || false,
     notes:           appointment?.notes           || '',
   })
-  const [error, setError] = useState('')
+  const [error, setError]         = useState('')
+  const [showSlots, setShowSlots] = useState(false)
 
   const isAvaliacao    = form.appointmentType === 'avaliacao'
   const hasTotalSessions = !isAvaliacao && form.totalSessions.trim() !== ''
@@ -107,7 +109,13 @@ export default function AppointmentForm({ appointment, patients, appointments, s
     onSave(form)
   }
 
+  function handleSlotSelect(slot) {
+    setForm(prev => ({ ...prev, date: slot.date, time: slot.time }))
+    setShowSlots(false)
+  }
+
   return (
+    <>
     <Modal
       title={appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
       onClose={onClose}
@@ -215,6 +223,19 @@ export default function AppointmentForm({ appointment, patients, appointments, s
         </div>
       )}
 
+      {/* Encontrar Horário — apenas em novo agendamento */}
+      {!appointment && (
+        <div className="slot-finder-row">
+          <button
+            type="button"
+            className="slot-finder-btn"
+            onClick={() => setShowSlots(true)}
+          >
+            🔍 Encontrar Horário Disponível
+          </button>
+        </div>
+      )}
+
       {/* Data e Hora */}
       <div className="form-row">
         <div className="form-group" style={{ margin: 0 }}>
@@ -290,5 +311,13 @@ export default function AppointmentForm({ appointment, patients, appointments, s
         />
       </div>
     </Modal>
+    {showSlots && (
+      <AvailableSlotsModal
+        appointments={appointments}
+        onSelect={handleSlotSelect}
+        onClose={() => setShowSlots(false)}
+      />
+    )}
+    </>
   )
 }

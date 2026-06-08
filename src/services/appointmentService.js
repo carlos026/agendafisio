@@ -27,6 +27,7 @@ export function add(data) {
     value: parseFloat(data.value) || 0,
     paid: data.paid || false,
     notes: data.notes?.trim() || '',
+    naoIniciouSessoes: data.naoIniciouSessoes || false,
     createdAt: new Date().toISOString(),
   }
   setItem(KEYS.APPOINTMENTS, [...appointments, appointment])
@@ -63,6 +64,14 @@ export function remove(id) {
 export function togglePaid(id) {
   const appointments = getAll().map(a =>
     a.id === id ? { ...a, paid: !a.paid } : a
+  )
+  setItem(KEYS.APPOINTMENTS, appointments)
+}
+
+// Alterna o flag "não iniciou sessões" (apenas para avaliações)
+export function toggleNaoIniciouSessoes(id) {
+  const appointments = getAll().map(a =>
+    a.id === id ? { ...a, naoIniciouSessoes: !a.naoIniciouSessoes } : a
   )
   setItem(KEYS.APPOINTMENTS, appointments)
 }

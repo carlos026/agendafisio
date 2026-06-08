@@ -152,37 +152,40 @@ export default function FinancePage() {
             </div>
           ) : (
             <div className="card-list">
-              {filtered.map(apt => (
-                <div key={apt.id} className="card">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="font-semibold truncate">{getPatientName(apt.patientId)}</div>
-                      <div className="text-xs text-muted mt-1">
-                        {formatDate(apt.date)} às {apt.time}
-                        {apt.status === 'completed' && (
-                          <span style={{ color: 'var(--success)', marginLeft: '6px' }}>• Concluído</span>
-                        )}
-                        {apt.status === 'scheduled' && (
-                          <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>• Agendado</span>
-                        )}
+              {filtered.map(apt => {
+                const patientInactive = patients.find(p => p.id === apt.patientId)?.active === false
+                return (
+                  <div key={apt.id} className={`card${patientInactive ? ' apt-patient-inactive' : ''}`}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="font-semibold truncate">{getPatientName(apt.patientId)}</div>
+                        <div className="text-xs text-muted mt-1">
+                          {formatDate(apt.date)} às {apt.time}
+                          {apt.status === 'completed' && (
+                            <span style={{ color: 'var(--success)', marginLeft: '6px' }}>• Concluído</span>
+                          )}
+                          {apt.status === 'scheduled' && (
+                            <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>• Agendado</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div className="font-bold" style={{ fontSize: '1rem' }}>
-                        {formatCurrency(apt.value)}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div className="font-bold" style={{ fontSize: '1rem' }}>
+                          {formatCurrency(apt.value)}
+                        </div>
+                        <button
+                          className={`badge ${apt.paid ? 'badge-success' : 'badge-warning'}`}
+                          style={{ marginTop: '6px', border: 'none', cursor: 'pointer' }}
+                          onClick={() => handleTogglePaid(apt.id)}
+                          title="Clique para alternar"
+                        >
+                          {apt.paid ? '✓ Pago' : '○ Pendente'}
+                        </button>
                       </div>
-                      <button
-                        className={`badge ${apt.paid ? 'badge-success' : 'badge-warning'}`}
-                        style={{ marginTop: '6px', border: 'none', cursor: 'pointer' }}
-                        onClick={() => handleTogglePaid(apt.id)}
-                        title="Clique para alternar"
-                      >
-                        {apt.paid ? '✓ Pago' : '○ Pendente'}
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </>
