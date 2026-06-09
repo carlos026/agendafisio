@@ -7,11 +7,12 @@ import PatientForm from './PatientForm'
 const CONVENIO_LABEL = { convenio: 'Convênio', particular: 'Particular' }
 
 export default function PatientsPage() {
-  const { patients, refreshPatients } = useApp()
-  const [search, setSearch]         = useState('')
-  const [showForm, setShowForm]     = useState(false)
-  const [editing, setEditing]       = useState(null)
+  const { patients, appointments, refreshPatients } = useApp()
+  const [search, setSearch]             = useState('')
+  const [showForm, setShowForm]         = useState(false)
+  const [editing, setEditing]           = useState(null)
   const [showInactive, setShowInactive] = useState(false)
+  const [showNaoIniciou, setShowNaoIniciou] = useState(false)
 
   // Separa ativos de inativos, aplicando filtro de busca em ambos
   const query = search.toLowerCase()
@@ -20,6 +21,17 @@ export default function PatientsPage() {
 
   const activePatients   = patients.filter(p => p.active !== false && matches(p))
   const inactivePatients = patients.filter(p => p.active === false && matches(p))
+
+  // Pacientes com avaliação marcada como "Não iniciou sessões"
+  // Busca o agendamento mais recente com essa flag para exibir a data
+  const naoIniciouMap = (appointments || [])
+    .filter(a => a.naoIniciouSessoes)
+    .reduce((acc, a) => {
+      if (!acc[a.patientId] || a.date > acc[a.patientId].date) acc[a.patientId] = a
+      return acc
+    }, {})
+  const naoIniciouPatients = patients
+    .filter(p => naoIniciouMap[p.id] && matches(p))
 
   function handleSave(data) {
     if (editing) {
@@ -97,7 +109,7 @@ export default function PatientsPage() {
             onClick={() => setShowInactive(v => !v)}
           >
             <span className="inactive-section-label">
-              Desistiram ({inactivePatients.length})
+              Desistentes ({inactivePatients.length})
             </span>
             <span className="inactive-section-chevron">
               {showInactive ? '▲' : '▼'}
@@ -111,6 +123,39 @@ export default function PatientsPage() {
                   key={patient.id}
                   patient={patient}
                   inactive
+                  onEdit={() => handleEdit(patient)}
+                  onDelete={() => handleDelete(patient.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- Seção: Não iniciaram sessões ---- */}
+      {naoIniciouPatients.length > 0 && (
+        <div className="inactive-section">
+          <button
+            className="inactive-section-toggle nao-iniciou-toggle"
+            onClick={() => setShowNaoIniciou(v => !v)}
+          >
+            <span className="inactive-section-label">
+              ⚠ Não iniciaram sessões ({naoIniciouPatients.length})
+            </span>
+            <span className="inactive-section-chevron">
+              {showNaoIniciou ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {showNaoIniciou && (
+            <div className="card-list" style={{ marginTop: '8px' }}>
+              {naoIniciouPatients.map(patient => (
+                <PatientCard
+                  key={patient.id}
+                  patient={patient}
+                  inactive={patient.active === false}
+                  naoIniciou
+                  avalDate={naoIniciouMap[patient.id]?.date}
                   onEdit={() => handleEdit(patient)}
                   onDelete={() => handleDelete(patient.id)}
                 />
@@ -141,8 +186,17 @@ export default function PatientsPage() {
   )
 }
 
-// ---- Card de paciente (ativo ou inativo) ----
-function PatientCard({ patient, inactive, onEdit, onDelete }) {
+const DAY_ABBR   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+const MONTH_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+function formatAvalDate(dateStr) {
+  if (!dateStr) return null
+  const dt = new Date(dateStr + 'T12:00:00')
+  return `${DAY_ABBR[dt.getDay()]}, ${dt.getDate()} ${MONTH_ABBR[dt.getMonth()]}`
+}
+
+// ---- Card de paciente (ativo, inativo ou não iniciou) ----
+function PatientCard({ patient, inactive, naoIniciou, avalDate, onEdit, onDelete }) {
   return (
     <div className={`patient-card ${inactive ? 'patient-card--inactive' : ''}`}>
       <div className={`patient-avatar ${inactive ? 'patient-avatar--inactive' : ''}`}>
@@ -153,6 +207,7 @@ function PatientCard({ patient, inactive, onEdit, onDelete }) {
         <div className="patient-name">
           {patient.name}
           {inactive && <span className="patient-inactive-badge">Desistiu</span>}
+          {naoIniciou && <span className="patient-nao-iniciou-badge">⚠ Não iniciou</span>}
         </div>
         {patient.phone && (
           <div className="patient-phone">📱 {patient.phone}</div>
@@ -160,6 +215,11 @@ function PatientCard({ patient, inactive, onEdit, onDelete }) {
         {patient.convenio && CONVENIO_LABEL[patient.convenio] && (
           <div className="text-xs text-muted mt-1">
             {CONVENIO_LABEL[patient.convenio]}
+          </div>
+        )}
+        {naoIniciou && avalDate && (
+          <div className="text-xs mt-1" style={{ color: 'var(--warning)' }}>
+            Avaliação: {formatAvalDate(avalDate)}
           </div>
         )}
         {patient.notes && (

@@ -21,18 +21,17 @@ export default function FinancePage() {
   const [month, setMonth]   = useState(current.month)
   const [filter, setFilter] = useState('all')
 
-  // ---- dados da view "Mês" ----
-  const monthApts  = getMonthAppointments(appointments, year, month)
-  const activeApts = monthApts.filter(a => a.status !== 'cancelled')
+  // ---- dados da view "Mês" — apenas concluídos ----
+  const monthApts   = getMonthAppointments(appointments, year, month)
+  const activeApts  = monthApts.filter(a => a.status === 'completed')
 
-  const totalReceived  = activeApts.filter(a => a.paid).reduce((s, a) => s + a.value, 0)
-  const totalPending   = activeApts.filter(a => !a.paid).reduce((s, a) => s + a.value, 0)
-  const totalApts      = activeApts.length
-  const completedCount = activeApts.filter(a => a.status === 'completed').length
+  const totalReceived = activeApts.filter(a =>  a.paid).reduce((s, a) => s + a.value, 0)
+  const totalPending  = activeApts.filter(a => !a.paid).reduce((s, a) => s + a.value, 0)
+  const totalApts     = activeApts.length
 
-  // ---- dados da view "Pendências" — todos os meses ----
+  // ---- dados da view "Pendências" — concluídos e não pagos, todos os meses ----
   const allPending = appointments
-    .filter(a => !a.paid && a.status !== 'cancelled')
+    .filter(a => !a.paid && a.status === 'completed')
     .sort((a, b) => a.date.localeCompare(b.date)) // mais antigos primeiro
 
   // Agrupa por paciente, ordena pelo maior valor pendente
@@ -123,8 +122,8 @@ export default function FinancePage() {
                 <div className="finance-stat-value">{formatCurrency(totalPending)}</div>
               </div>
               <div className="finance-stat">
-                <div className="finance-stat-label">Atendimentos</div>
-                <div className="finance-stat-value">{completedCount} / {totalApts}</div>
+                <div className="finance-stat-label">Concluídos</div>
+                <div className="finance-stat-value">{totalApts}</div>
               </div>
             </div>
           </div>
@@ -161,11 +160,8 @@ export default function FinancePage() {
                         <div className="font-semibold truncate">{getPatientName(apt.patientId)}</div>
                         <div className="text-xs text-muted mt-1">
                           {formatDate(apt.date)} às {apt.time}
-                          {apt.status === 'completed' && (
-                            <span style={{ color: 'var(--success)', marginLeft: '6px' }}>• Concluído</span>
-                          )}
-                          {apt.status === 'scheduled' && (
-                            <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>• Agendado</span>
+                          {apt.serviceType && (
+                            <span style={{ marginLeft: '6px' }}>· {apt.serviceType}</span>
                           )}
                         </div>
                       </div>
