@@ -6,7 +6,8 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
 
   const [form, setForm] = useState({
     data:       existing.data       || appointment.date,
-    pa:         existing.pa         || '',
+    paInicial:  existing.paInicial  || '',
+    paFinal:    existing.paFinal    || '',
     satInicial: existing.satInicial || '',
     satFinal:   existing.satFinal   || '',
     fcInicial:  existing.fcInicial  || '',
@@ -22,7 +23,8 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
 
   function handleSubmit() {
     if (!form.data)              { setError('Informe a data'); return }
-    if (!form.pa.trim())         { setError('Informe a Pressão Arterial'); return }
+    if (!form.paInicial.trim())  { setError('Informe a Pressão Arterial Inicial'); return }
+    if (!form.paFinal.trim())    { setError('Informe a Pressão Arterial Final'); return }
     if (!form.satInicial.trim()) { setError('Informe a SAT Inicial'); return }
     if (!form.satFinal.trim())   { setError('Informe a SAT Final'); return }
     if (!form.fcInicial.trim())  { setError('Informe a FC Inicial'); return }
@@ -60,19 +62,32 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
       </div>
 
       {/* Pressão Arterial */}
-      <div className="form-group">
-        <label className="form-label">Pressão Arterial (PA) *</label>
-        <input
-          type="text"
-          className="form-input"
-          placeholder="Ex: 120/80 mmHg"
-          value={form.pa}
-          onChange={e => set('pa', e.target.value)}
-        />
+      <div className="evolution-section-label">Pressão Arterial (PA)</div>
+      <div className="form-row">
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Pressão Arterial Inicial</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Ex: 120/80 mmHg"
+            value={form.paInicial}
+            onChange={e => set('paInicial', e.target.value)}
+          />
+         </div>
+          <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Pressão Arterial Final</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Ex: 130/90 mmHg"
+            value={form.paFinal}
+            onChange={e => set('paFinal', e.target.value)}
+          />
+         </div>
       </div>
 
       {/* Saturação */}
-      <div className="evolution-section-label">Saturação (SpO₂)</div>
+      <div className="evolution-section-label"  style={{ marginTop: '16px' }}>Saturação (SpO₂)</div>
       <div className="form-row">
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">SAT Inicial (%) *</label>

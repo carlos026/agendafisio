@@ -6,6 +6,7 @@ import AppointmentForm from './AppointmentForm'
 import WeeklyView from './WeeklyView'
 import DailyBoardView from './DailyBoardView'
 import EvolutionModal from './EvolutionModal'
+import EvolutionHistoryModal from './EvolutionHistoryModal'
 
 const STATUS_MAP = {
   scheduled: ['badge-primary', 'Agendado'],
@@ -31,7 +32,8 @@ export default function AgendaPage() {
   const [filter, setFilter]                 = useState('upcoming')
   const [historyMonth, setHistoryMonth]     = useState(null)
   const [noPatientAlert, setNoPatientAlert] = useState(false)
-  const [evolutionApt, setEvolutionApt]     = useState(null)
+  const [evolutionApt, setEvolutionApt]         = useState(null)
+  const [showEvolutionHistory, setShowEvolutionHistory] = useState(false)
 
   const today = getTodayString()
 
@@ -327,6 +329,16 @@ export default function AgendaPage() {
         </div>
       )}
 
+      {appointments.some(a => a.evolution) && (
+        <button
+          className="fab fab-secondary"
+          onClick={() => setShowEvolutionHistory(true)}
+          title="Filtro de Evoluções"
+        >
+          🔍
+        </button>
+      )}
+
       <button
         className="fab"
         onClick={() => {
@@ -360,6 +372,14 @@ export default function AgendaPage() {
           patientName={getPatientName(evolutionApt.patientId)}
           onSave={handleSaveEvolution}
           onClose={() => setEvolutionApt(null)}
+        />
+      )}
+
+      {showEvolutionHistory && (
+        <EvolutionHistoryModal
+          appointments={appointments}
+          patients={patients}
+          onClose={() => setShowEvolutionHistory(false)}
         />
       )}
     </div>
