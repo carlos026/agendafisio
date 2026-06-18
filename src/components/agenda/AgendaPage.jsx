@@ -5,6 +5,7 @@ import { formatCurrency, getTodayString, getRelativeDateLabel } from '../../util
 import AppointmentForm from './AppointmentForm'
 import WeeklyView from './WeeklyView'
 import DailyBoardView from './DailyBoardView'
+import EvolutionModal from './EvolutionModal'
 
 const STATUS_MAP = {
   scheduled: ['badge-primary', 'Agendado'],
@@ -30,6 +31,7 @@ export default function AgendaPage() {
   const [filter, setFilter]                 = useState('upcoming')
   const [historyMonth, setHistoryMonth]     = useState(null)
   const [noPatientAlert, setNoPatientAlert] = useState(false)
+  const [evolutionApt, setEvolutionApt]     = useState(null)
 
   const today = getTodayString()
 
@@ -105,6 +107,12 @@ export default function AgendaPage() {
   function handleToggleNaoIniciou(id) {
     appointmentService.toggleNaoIniciouSessoes(id)
     refreshAppointments()
+  }
+
+  function handleSaveEvolution(data) {
+    appointmentService.saveEvolution(evolutionApt.id, data)
+    refreshAppointments()
+    setEvolutionApt(null)
   }
 
   function handleStatusChange(id, newStatus) {
@@ -246,6 +254,18 @@ export default function AgendaPage() {
                                 ✓ Concluir
                               </button>
                             )}
+                            {apt.status === 'completed' && (
+                              <button
+                                className="btn btn-sm"
+                                style={{
+                                  background: apt.evolution ? 'var(--primary-light)' : 'var(--gray-100)',
+                                  color: apt.evolution ? 'var(--primary-dark)' : 'var(--gray-600)',
+                                }}
+                                onClick={() => setEvolutionApt(apt)}
+                              >
+                                📋 {apt.evolution ? 'Ver Evolução' : 'Evolução'}
+                              </button>
+                            )}
                             {isAvaliacao && (
                               <button
                                 className={`btn-nao-iniciou${apt.naoIniciouSessoes ? ' active' : ''}`}
@@ -331,6 +351,15 @@ export default function AgendaPage() {
           settings={settings}
           onSave={handleSave}
           onClose={closeForm}
+        />
+      )}
+
+      {evolutionApt && (
+        <EvolutionModal
+          appointment={evolutionApt}
+          patientName={getPatientName(evolutionApt.patientId)}
+          onSave={handleSaveEvolution}
+          onClose={() => setEvolutionApt(null)}
         />
       )}
     </div>

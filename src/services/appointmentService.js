@@ -68,6 +68,14 @@ export function togglePaid(id) {
   setItem(KEYS.APPOINTMENTS, appointments)
 }
 
+// Salva os dados de evolução clínica vinculados ao atendimento
+export function saveEvolution(id, evolution) {
+  const appointments = getAll().map(a =>
+    a.id === id ? { ...a, evolution } : a
+  )
+  setItem(KEYS.APPOINTMENTS, appointments)
+}
+
 // Alterna o flag "não iniciou sessões" (apenas para avaliações)
 export function toggleNaoIniciouSessoes(id) {
   const appointments = getAll().map(a =>
