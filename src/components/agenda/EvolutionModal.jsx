@@ -23,14 +23,16 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
 
   function handleSubmit() {
     if (!form.data)              { setError('Informe a data'); return }
-    if (!form.paInicial.trim())  { setError('Informe a Pressão Arterial Inicial'); return }
-    if (!form.paFinal.trim())    { setError('Informe a Pressão Arterial Final'); return }
     if (!form.satInicial.trim()) { setError('Informe a SAT Inicial'); return }
     if (!form.satFinal.trim())   { setError('Informe a SAT Final'); return }
     if (!form.fcInicial.trim())  { setError('Informe a FC Inicial'); return }
     if (!form.fcFinal.trim())    { setError('Informe a FC Final'); return }
     if (!form.texto.trim())      { setError('Informe a Evolução Clínica'); return }
-    onSave(form)
+    onSave({
+      ...form,
+      paInicial: form.paInicial.trim() || '-',
+      paFinal:   form.paFinal.trim()   || '-',
+    })
   }
 
   return (
