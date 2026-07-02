@@ -25,6 +25,12 @@ export default function SettingsPage() {
   const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes))
   const [newType, setNewType] = useState('')
   const [typeError, setTypeError] = useState('')
+  const [carimboText, setCarimboText] = useState(initial.carimboText || '')
+
+  function handleCarimboBlur() {
+    settingsService.saveSettings({ carimboText: carimboText.trim() })
+    refreshSettings()
+  }
 
   function persist(types) {
     settingsService.saveSettings({ serviceTypes: serializeTypes(types) })
@@ -138,6 +144,23 @@ export default function SettingsPage() {
           </button>
         </div>
         {typeError && <div className="alert-error" style={{ marginTop: '8px' }}>{typeError}</div>}
+      </div>
+
+      {/* Carimbo do Profissional */}
+      <div className="settings-section">
+        <h2 className="settings-title">Carimbo do Profissional</h2>
+        <p className="settings-description">
+          Texto exibido ao final de cada evolução no Relatório de Evolução em PDF (nome, título, registro profissional etc).
+        </p>
+        <textarea
+          className="form-textarea"
+          placeholder="Ex: Maria Souza — Fisioterapeuta — CREFITO 12345-F"
+          rows={3}
+          value={carimboText}
+          onChange={e => setCarimboText(e.target.value)}
+          onBlur={handleCarimboBlur}
+          style={{ marginTop: '8px' }}
+        />
       </div>
 
       {/* Seção de Importação/Exportação */}

@@ -55,6 +55,18 @@ export function getTodayString() {
   return new Date().toISOString().split('T')[0]
 }
 
+// Retorna a idade em anos completos a partir da data de nascimento (YYYY-MM-DD)
+export function calculateAge(birthDate) {
+  if (!birthDate) return null
+  const [by, bm, bd] = birthDate.split('-').map(Number)
+  const today = new Date()
+  let age = today.getFullYear() - by
+  const hadBirthdayThisYear =
+    (today.getMonth() + 1 > bm) || (today.getMonth() + 1 === bm && today.getDate() >= bd)
+  if (!hadBirthdayThisYear) age -= 1
+  return age
+}
+
 // Retorna o ano e mês atuais
 export function getCurrentMonth() {
   const now = new Date()

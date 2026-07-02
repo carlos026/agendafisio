@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import Modal from '../ui/Modal'
+import { useApp } from '../../App'
+import { exportEvolutionReportPDF } from '../../services/evolutionPdfExport'
 
 const WDAY  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const MONTH = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -11,7 +13,9 @@ function formatDate(dateStr) {
 }
 
 export default function EvolutionHistoryModal({ appointments, patients, onClose }) {
+  const { settings } = useApp()
   const [patientId, setPatientId] = useState('')
+  const [exportError, setExportError] = useState('')
 
   // Pacientes que têm ao menos uma evolução registrada
   const patientsWithEvolution = patients
@@ -23,6 +27,15 @@ export default function EvolutionHistoryModal({ appointments, patients, onClose 
         .filter(a => a.patientId === patientId && a.evolution)
         .sort((a, b) => b.date.localeCompare(a.date))
     : []
+
+  async function handleExportPDF() {
+    setExportError('')
+    try {
+      await exportEvolutionReportPDF(patientId, { patients, appointments, carimboText: settings.carimboText })
+    } catch (err) {
+      setExportError('Não foi possível gerar o PDF. Tente novamente.')
+    }
+  }
 
   return (
     <Modal title="Histórico de Evoluções" onClose={onClose}>
@@ -60,9 +73,15 @@ export default function EvolutionHistoryModal({ appointments, patients, onClose 
       {/* Lista de evoluções */}
       {evolutions.length > 0 && (
         <div className="evo-history-list">
-          <div className="evo-history-count-label">
-            {evolutions.length} {evolutions.length === 1 ? 'registro' : 'registros'} encontrado{evolutions.length !== 1 ? 's' : ''}
+          <div className="evo-history-count-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <span>
+              {evolutions.length} {evolutions.length === 1 ? 'registro' : 'registros'} encontrado{evolutions.length !== 1 ? 's' : ''}
+            </span>
+            <button className="btn btn-primary btn-sm" onClick={handleExportPDF}>
+              Exportar PDF
+            </button>
           </div>
+          {exportError && <div className="alert-error" style={{ marginTop: '8px' }}>{exportError}</div>}
 
           {evolutions.map(apt => {
             const e = apt.evolution
