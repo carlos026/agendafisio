@@ -5,11 +5,13 @@ export default function PatientForm({ patient, onSave, onClose }) {
   const isEditing = Boolean(patient)
 
   const [form, setForm] = useState({
-    name:     patient?.name     || '',
-    phone:    patient?.phone    || '',
-    notes:    patient?.notes    || '',
-    convenio: patient?.convenio || '',
-    active:   patient?.active !== false, // novos pacientes sempre ativos
+    name:           patient?.name           || '',
+    birthDate:      patient?.birthDate      || '',
+    mainComplaint:  patient?.mainComplaint  || '',
+    phone:          patient?.phone          || '',
+    notes:       patient?.notes       || '',
+    convenio:    patient?.convenio    || '',
+    active:      patient?.active !== false, // novos pacientes sempre ativos
   })
   const [error, setError] = useState('')
 
@@ -19,10 +21,9 @@ export default function PatientForm({ patient, onSave, onClose }) {
   }
 
   function handleSubmit() {
-    if (!form.name.trim()) {
-      setError('O nome é obrigatório')
-      return
-    }
+    if (!form.name.trim()) { setError('O nome é obrigatório'); return }
+    if (!form.birthDate)                  { setError('A data de nascimento é obrigatória'); return }
+    if (!form.mainComplaint.trim())       { setError('A queixa principal é obrigatória'); return }
     onSave(form)
   }
 
@@ -50,6 +51,27 @@ export default function PatientForm({ patient, onSave, onClose }) {
           value={form.name}
           onChange={e => set('name', e.target.value)}
           autoFocus
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Data de Nascimento *</label>
+        <input
+          type="date"
+          className="form-input"
+          value={form.birthDate}
+          onChange={e => set('birthDate', e.target.value)}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Queixa Principal *</label>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Ex: Dor pélvica crônica, incontinência urinária..."
+          value={form.mainComplaint}
+          onChange={e => set('mainComplaint', e.target.value)}
         />
       </div>
 
