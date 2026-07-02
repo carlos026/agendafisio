@@ -5,7 +5,7 @@ Sistema web PWA para gerenciar pacientes, agenda e controle financeiro de clíni
 ## Funcionalidades
 
 ### Pacientes
-- Cadastro com nome, telefone, observações e tipo de convênio (particular ou convênio)
+- Cadastro com nome, data de nascimento, queixa principal, telefone, observações e tipo de convênio (particular ou convênio)
 - Inativação de pacientes desistentes (aparecem em cinza/opaco na agenda e no financeiro)
 - Histórico de sessões vinculado ao paciente
 
@@ -32,6 +32,11 @@ Busca inteligente de slots livres na agenda:
 - **Priorização automática** por preenchimento de lacunas: slots "sanduíche" (entre dois atendimentos) têm prioridade máxima, evitando fragmentação da agenda
 - Botão "Agendar" em cada sugestão preenche data e hora no formulário automaticamente
 
+### Evolução Clínica
+- Registro de evolução por atendimento: pressão arterial (inicial/final, opcional), saturação (inicial/final) e frequência cardíaca (inicial/final), além do texto livre da evolução
+- **Histórico de Evoluções**: modal com filtro por paciente, listando todas as evoluções registradas em ordem cronológica
+- **Exportar PDF**: gera o *Relatório de Evolução* em PDF (`Relatorio_Evolucao_<Nome>.pdf`) a partir do histórico do paciente selecionado — cabeçalho com dados do paciente (idade calculada automaticamente, data de nascimento, queixa principal, data da avaliação) seguido de um bloco por evolução (data, nº do atendimento, sinais vitais, texto completo e carimbo do profissional), com paginação automática que nunca corta um bloco no meio da página
+
 ### Financeiro
 - Controle de pagamentos por mês (recebidos e pendentes)
 - Resumo do mês: total, recebido e a receber
@@ -41,6 +46,7 @@ Busca inteligente de slots livres na agenda:
 ### Configurações
 - Cadastro de tipos de atendimento com preços por convênio e particular
 - Preenchimento automático do valor ao criar agendamento (baseado no tipo + convênio do paciente)
+- Carimbo do Profissional (texto livre) usado na assinatura do Relatório de Evolução em PDF
 
 ### Importação e Exportação
 - Exportação da agenda e dados de pacientes para **Excel (.xlsx)**
@@ -53,6 +59,7 @@ Busca inteligente de slots livres na agenda:
 - **localStorage** — dados salvos localmente no dispositivo
 - **vite-plugin-pwa** — instalável como app (PWA)
 - **SheetJS (xlsx)** — importação e exportação de planilhas
+- **jsPDF** — geração do Relatório de Evolução em PDF
 
 ## Pré-requisitos
 
@@ -97,7 +104,7 @@ Os dados ficam salvos no **localStorage do navegador** do dispositivo:
 |-------|----------|
 | `fp_patients` | Lista de pacientes |
 | `fp_appointments` | Lista de agendamentos |
-| `fp_settings` | Configurações (tipos de atendimento e preços) |
+| `fp_settings` | Configurações (tipos de atendimento, preços e carimbo do profissional) |
 
 > Para backup manual: DevTools → Application → Local Storage → copiar os valores, ou usar a exportação para Excel disponível no sistema.
 
