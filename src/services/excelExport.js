@@ -66,7 +66,12 @@ function buildPatientsSheet(patients) {
 }
 
 // ---- buildEvolutionsSheet ----
-// Uma linha por evolução clínica registrada (appointment.evolution)
+// Uma linha por evolução clínica registrada (appointment.evolution).
+// "Data do Atendimento" + "Horário" identificam o atendimento exato ao qual
+// a evolução pertence (mesmas colunas/formato da aba Atendimentos) — é o que
+// permite religar a evolução ao atendimento certo ao reimportar. "Data da
+// Evolução" é o campo clínico (pode ter sido editado e diferir da data do
+// atendimento).
 function buildEvolutionsSheet(appointments, patients) {
   const patientMap = {}
   patients.forEach(p => { patientMap[p.id] = p })
@@ -79,15 +84,17 @@ function buildEvolutionsSheet(appointments, patients) {
       const patient = patientMap[apt.patientId] || {}
       const e = apt.evolution
       return {
-        'Paciente':            patient.name || 'Removido',
-        'Data':                isoToDisplay(e.data || apt.date),
-        'PA Inicial':          e.paInicial || '',
-        'PA Final':            e.paFinal || '',
-        'Saturação Inicial':   e.satInicial || '',
-        'Saturação Final':     e.satFinal || '',
-        'FC Inicial':          e.fcInicial || '',
-        'FC Final':            e.fcFinal || '',
-        'Evolução':            e.texto || '',
+        'Paciente':             patient.name || 'Removido',
+        'Data do Atendimento':  isoToDisplay(apt.date),
+        'Horário':              apt.time || '',
+        'Data da Evolução':     isoToDisplay(e.data || apt.date),
+        'PA Inicial':           e.paInicial || '',
+        'PA Final':             e.paFinal || '',
+        'Saturação Inicial':    e.satInicial || '',
+        'Saturação Final':      e.satFinal || '',
+        'FC Inicial':           e.fcInicial || '',
+        'FC Final':             e.fcFinal || '',
+        'Evolução':             e.texto || '',
       }
     })
 }

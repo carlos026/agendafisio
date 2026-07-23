@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
-import { parseFile, prepareImport, executeImport } from '../../services/excelService'
+import { parseFile, prepareImport, prepareEvolutions, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
 import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
@@ -21,8 +21,8 @@ export default function ImportExportPage() {
   const [step, setStep]             = useState(STEP.IDLE)
   const [selectedFile, setFile]     = useState(null)
   const [parseError, setParseError] = useState('')
-  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped }
-  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors }
+  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped, evolutions, evolutionsSkipped }
+  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors }
 
   // ---- estado de exportação ----
   const [exportMsg, setExportMsg]   = useState('')
@@ -50,9 +50,10 @@ export default function ImportExportPage() {
     setStep(STEP.PARSING)
     setParseError('')
     try {
-      const rawRows = await parseFile(selectedFile)
-      const prepared = prepareImport(rawRows)
-      setPreview(prepared)
+      const { appointmentRows, evolutionRows } = await parseFile(selectedFile)
+      const prepared = prepareImport(appointmentRows)
+      const preparedEvolutions = prepareEvolutions(evolutionRows, prepared.rows)
+      setPreview({ ...prepared, evolutions: preparedEvolutions.rows, evolutionsSkipped: preparedEvolutions.skipped })
       setStep(STEP.PREVIEW)
     } catch (err) {
       setParseError(err.message)
@@ -64,7 +65,7 @@ export default function ImportExportPage() {
     if (!preview) return
     setStep(STEP.IMPORTING)
     try {
-      const result = executeImport(preview.rows)
+      const result = executeImport(preview.rows, preview.evolutions)
       refreshPatients()
       refreshAppointments()
       setResult(result)
@@ -109,9 +110,10 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Importar Planilha</h2>
         <p className="ie-description">
-          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (aba <em>Atendimentos</em>)
+          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (abas <em>Atendimentos</em> e <em>Evoluções</em>)
           quanto uma planilha externa com colunas: <em>Paciente, Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
-          Pacientes novos serão criados automaticamente.
+          Pacientes novos serão criados automaticamente. Evoluções só são importadas quando o atendimento correspondente
+          (mesmo paciente, data e horário) existir ou estiver sendo criado nesta mesma importação.
         </p>
 
         {/* Área de seleção de arquivo */}
@@ -169,10 +171,22 @@ export default function ImportExportPage() {
                 <span className="ie-stat-num">{preview.newPatientNames.length}</span>
                 <span className="ie-stat-label">novos pacientes</span>
               </div>
+              {preview.evolutions.length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{preview.evolutions.length}</span>
+                  <span className="ie-stat-label">evoluções para importar</span>
+                </div>
+              )}
               {preview.skipped.length > 0 && (
                 <div className="ie-stat ie-stat--warn">
                   <span className="ie-stat-num">{preview.skipped.length}</span>
                   <span className="ie-stat-label">linhas ignoradas</span>
+                </div>
+              )}
+              {preview.evolutionsSkipped.length > 0 && (
+                <div className="ie-stat ie-stat--warn">
+                  <span className="ie-stat-num">{preview.evolutionsSkipped.length}</span>
+                  <span className="ie-stat-label">evoluções ignoradas</span>
                 </div>
               )}
             </div>
@@ -191,6 +205,18 @@ export default function ImportExportPage() {
                 <summary>{preview.skipped.length} linha(s) ignorada(s) — clique para ver</summary>
                 <ul>
                   {preview.skipped.map((s, i) => (
+                    <li key={i}>Linha {s.lineNum}: {s.reason}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {/* Evoluções ignoradas */}
+            {preview.evolutionsSkipped.length > 0 && (
+              <details className="ie-skipped">
+                <summary>{preview.evolutionsSkipped.length} evolução(ões) ignorada(s) — clique para ver</summary>
+                <ul>
+                  {preview.evolutionsSkipped.map((s, i) => (
                     <li key={i}>Linha {s.lineNum}: {s.reason}</li>
                   ))}
                 </ul>
@@ -258,11 +284,20 @@ export default function ImportExportPage() {
               {importResult.patientsCreated.length > 0 && (
                 <span>{importResult.patientsCreated.length} novos pacientes criados</span>
               )}
+              {importResult.evolutionsImported.length > 0 && (
+                <span>{importResult.evolutionsImported.length} evoluções importadas</span>
+              )}
             </div>
             {importResult.errors.length > 0 && (
               <details className="ie-skipped">
                 <summary>{importResult.errors.length} erro(s)</summary>
                 <ul>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+              </details>
+            )}
+            {importResult.evolutionErrors.length > 0 && (
+              <details className="ie-skipped">
+                <summary>{importResult.evolutionErrors.length} erro(s) em evoluções</summary>
+                <ul>{importResult.evolutionErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>
               </details>
             )}
             <button className="btn btn-primary" style={{ marginTop: '12px' }} onClick={() => setPage('agenda')}>
