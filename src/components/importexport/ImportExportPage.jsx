@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
 import { parseFile, prepareImport, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
-import { isoToDisplay, statusToLabel } from '../../utils/excelParser'
+import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
 
 // Estados do fluxo de importação
@@ -89,7 +89,8 @@ export default function ImportExportPage() {
   function handleExport() {
     try {
       const result = exportToXLSX('fisioterapia-pelvica')
-      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos e ${result.patientsExported} pacientes.`)
+      const evoPart = result.evolutionsExported > 0 ? ` e ${result.evolutionsExported} evoluções` : ''
+      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos, ${result.patientsExported} pacientes${evoPart}.`)
       setTimeout(() => setExportMsg(''), 6000)
     } catch (err) {
       setExportMsg(`Erro ao exportar: ${err.message}`)
@@ -108,7 +109,8 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Importar Planilha</h2>
         <p className="ie-description">
-          Selecione um arquivo <strong>.xlsx</strong> com colunas: <em>Paciente, Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
+          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (aba <em>Atendimentos</em>)
+          quanto uma planilha externa com colunas: <em>Paciente, Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
           Pacientes novos serão criados automaticamente.
         </p>
 
@@ -204,6 +206,7 @@ export default function ImportExportPage() {
                       <th>Paciente</th>
                       <th>Data</th>
                       <th>Horário</th>
+                      <th>Tipo</th>
                       <th>Status</th>
                       <th>Valor</th>
                       <th>Pago</th>
@@ -219,10 +222,11 @@ export default function ImportExportPage() {
                         </td>
                         <td>{isoToDisplay(row.date)}</td>
                         <td>{row.time}</td>
+                        <td>{appointmentTypeToLabel(row.appointmentType)}</td>
                         <td>{statusToLabel(row.status)}</td>
                         <td>{formatCurrency(row.value)}</td>
                         <td>{row.paid ? '✓' : '○'}</td>
-                        <td className="ie-notes-cell">{row.description || row.notes || '—'}</td>
+                        <td className="ie-notes-cell">{[row.description, row.notes].filter(Boolean).join(' | ') || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -275,8 +279,9 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Exportar Dados</h2>
         <p className="ie-description">
-          Gera um arquivo <strong>.xlsx</strong> com todas as informações atuais do sistema.
-          O arquivo terá 3 abas: <em>Atendimentos</em>, <em>Pacientes</em> e <em>Resumo Financeiro</em>.
+          Gera um arquivo <strong>.xlsx</strong> com todas as informações atuais do sistema (inclui data de nascimento,
+          queixa principal, tipo de consulta e evoluções clínicas registradas).
+          O arquivo terá as abas <em>Atendimentos</em>, <em>Pacientes</em>, <em>Resumo Financeiro</em> e <em>Evoluções</em> (quando houver).
         </p>
 
         <div className="ie-export-info">

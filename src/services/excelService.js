@@ -1,6 +1,11 @@
 // ===== Serviço de Importação de Planilha Excel =====
 // Lê arquivo .xlsx, mapeia colunas para o modelo de dados do sistema
 // e insere pacientes + agendamentos novos.
+//
+// Reconhece dois formatos de cabeçalho:
+//  - o gerado pela própria exportação do sistema (src/services/excelExport.js),
+//    para permitir reimportar um backup;
+//  - um formato legado de planilha externa (de um sistema anterior).
 
 import * as XLSX from 'xlsx'
 import * as patientService from './patientService'
@@ -8,29 +13,44 @@ import * as appointmentService from './appointmentService'
 import {
   excelDateToISO,
   excelTimeToHHMM,
+  parseDateString,
   parseStatus,
   parseConvenio,
   parseSessionNumber,
-  parseTotalSessions,
+  parseIntOrNull,
+  parsePaid,
+  parseAppointmentType,
 } from '../utils/excelParser'
 
 // Mapeamento: cabeçalho do Excel → chave interna normalizada
 const COLUMN_MAP = {
+  // ---- formato gerado pela exportação do próprio sistema ----
   'Paciente':              'patientName',
+  'Data do Atendimento':   'date',
   'Horário':               'time',
   'Status':                'status',
+  'Tipo de Atendimento':   'serviceType',
+  'Tipo de Consulta':      'appointmentTypeRaw',
+  'Sessão':                'sessionNumberRaw',
+  'Total de Sessões':      'totalSessionsRaw',
+  'Convênio':              'convenioRaw',
+  'Valor (R$)':            'value',
+  'Pago':                  'paidRaw',
+  'Observações':           'notes',
+
+  // ---- formato legado (planilha externa de um sistema anterior) ----
   'Descrição':             'description',
   'Sessões (Guia)':        'totalSessionsRaw',
-  'Data do Atendimento':   'date',
-  'Acesso':                'convenio',
+  'Acesso':                'convenioRaw',
   'Valor':                 'value',
-  'Status Pagamento':      'paid',
+  'Status Pagamento':      'paidRaw',
   'Pagamento':             'paymentDate',
-  'Observação':            'observation',
+  'Observação':            'notes',
 }
 
-// Sheets que não contêm dados de atendimento (escala semanal, agenda simplificada)
-const SKIP_SHEETS = new Set(['Agenda', 'Semana de Atendimentos'])
+// Sheets que não contêm dados de atendimento (escala semanal, agenda simplificada,
+// e as demais abas geradas pela própria exportação do sistema)
+const SKIP_SHEETS = new Set(['Agenda', 'Semana de Atendimentos', 'Pacientes', 'Resumo Financeiro', 'Evoluções'])
 
 // ---- parseFile ----
 // Lê um File .xlsx e retorna array de objetos com as colunas normalizadas.
@@ -132,13 +152,8 @@ export function prepareImport(rawRows) {
       return
     }
 
-    // Converte data
-    let date = null
-    if (typeof raw.date === 'number') {
-      date = excelDateToISO(raw.date)
-    } else if (typeof raw.date === 'string' && raw.date.match(/\d{4}-\d{2}-\d{2}/)) {
-      date = raw.date
-    }
+    // Converte data — aceita serial do Excel, "YYYY-MM-DD" ou "DD/MM/YYYY"
+    const date = typeof raw.date === 'number' ? excelDateToISO(raw.date) : parseDateString(raw.date)
     if (!date) {
       skipped.push({ lineNum, reason: `Paciente "${patientName}": data inválida` })
       return
@@ -147,7 +162,7 @@ export function prepareImport(rawRows) {
     // Converte horário
     const time = typeof raw.time === 'number'
       ? excelTimeToHHMM(raw.time)
-      : (raw.time?.toString() || '09:00')
+      : (raw.time?.toString().trim() || '09:00')
 
     // Verifica se é paciente novo
     const nameKey = patientName.toLowerCase()
@@ -166,19 +181,27 @@ export function prepareImport(rawRows) {
     }
     aptIndex.add(dupKey) // marca para não duplicar dentro do próprio import
 
+    // Número da sessão: prioriza a coluna "Sessão" (formato atual);
+    // sem ela, tenta extrair da "Descrição" (formato legado)
+    const sessionNumber = raw.sessionNumberRaw != null
+      ? parseIntOrNull(raw.sessionNumberRaw)
+      : parseSessionNumber(raw.description)
+
     // Monta objeto de linha limpo
     rows.push({
       patientName,
       date,
       time,
       status: parseStatus(raw.status),
+      serviceType: raw.serviceType?.toString().trim() || 'Fisioterapia Pélvica',
+      appointmentType: parseAppointmentType(raw.appointmentTypeRaw),
       description: raw.description?.toString().trim() || '',
-      notes: raw.observation?.toString().trim() || '',
-      totalSessions: parseTotalSessions(raw.totalSessionsRaw),
-      sessionNumber: parseSessionNumber(raw.description),
-      convenio: parseConvenio(raw.convenio),
+      notes: raw.notes?.toString().trim() || '',
+      totalSessions: parseIntOrNull(raw.totalSessionsRaw),
+      sessionNumber,
+      convenio: parseConvenio(raw.convenioRaw),
       value: typeof raw.value === 'number' ? raw.value : (parseFloat(raw.value) || 0),
-      paid: raw.paid === true || raw.paid === 1,
+      paid: parsePaid(raw.paidRaw),
       _sheet: raw._sheet,
       _isNewPatient: !existingPatient,
     })
@@ -221,14 +244,15 @@ export function executeImport(rows) {
         patientsCreated.push(patient)
       }
 
-      // Combina descrição + observação nas notas
+      // Combina descrição (formato legado) + observação nas notas
       const noteParts = []
       if (row.description) noteParts.push(row.description)
       if (row.notes) noteParts.push(row.notes)
 
       const apt = appointmentService.add({
         patientId: patient.id,
-        serviceType: 'Fisioterapia Pélvica',
+        serviceType: row.serviceType,
+        appointmentType: row.appointmentType,
         date: row.date,
         time: row.time,
         status: row.status,

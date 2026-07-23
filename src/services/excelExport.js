@@ -1,10 +1,19 @@
 // ===== Serviço de Exportação para Excel (.xlsx) =====
 // Gera um arquivo Excel com os dados atuais do sistema:
-//   Aba "Atendimentos" — todos os agendamentos com nome do paciente
-//   Aba "Pacientes"    — cadastro completo de pacientes
+//   Aba "Atendimentos"      — todos os agendamentos com nome do paciente
+//   Aba "Pacientes"         — cadastro completo de pacientes
+//   Aba "Resumo Financeiro" — totais por mês (só se houver atendimentos)
+//   Aba "Evoluções"         — evoluções clínicas registradas (só se houver alguma)
 
 import * as XLSX from 'xlsx'
-import { statusToLabel, convenioToLabel, isoToDisplay } from '../utils/excelParser'
+import {
+  statusToLabel,
+  convenioToLabel,
+  appointmentTypeToLabel,
+  activeToLabel,
+  isoToDisplay,
+} from '../utils/excelParser'
+import { calculateAge } from '../utils/helpers'
 import * as patientService from './patientService'
 import * as appointmentService from './appointmentService'
 
@@ -26,11 +35,13 @@ function buildAppointmentsSheet(appointments, patients) {
         'Horário':              apt.time || '',
         'Status':               statusToLabel(apt.status),
         'Tipo de Atendimento':  apt.serviceType || '',
+        'Tipo de Consulta':     appointmentTypeToLabel(apt.appointmentType),
         'Sessão':               apt.sessionNumber ?? '',
         'Total de Sessões':     apt.totalSessions ?? '',
         'Convênio':             convenioToLabel(patient.convenio || ''),
         'Valor (R$)':           apt.value ?? 0,
         'Pago':                 apt.paid ? 'Sim' : 'Não',
+        'Não Iniciou Sessões':  apt.naoIniciouSessoes ? 'Sim' : 'Não',
         'Observações':          apt.notes || '',
       }
     })
@@ -38,13 +49,47 @@ function buildAppointmentsSheet(appointments, patients) {
 
 // ---- buildPatientsSheet ----
 function buildPatientsSheet(patients) {
-  return patients.map(p => ({
-    'Nome':         p.name,
-    'Convênio':     convenioToLabel(p.convenio || ''),
-    'Telefone':     p.phone || '',
-    'Observações':  p.notes || '',
-    'Cadastrado em': p.createdAt ? isoToDisplay(p.createdAt.split('T')[0]) : '',
-  }))
+  return patients.map(p => {
+    const age = calculateAge(p.birthDate)
+    return {
+      'Nome':                p.name,
+      'Data de Nascimento':  p.birthDate ? isoToDisplay(p.birthDate) : '',
+      'Idade':               age === null ? '' : `${age} anos`,
+      'Queixa Principal':    p.mainComplaint || '',
+      'Telefone':            p.phone || '',
+      'Convênio':            convenioToLabel(p.convenio || ''),
+      'Situação':            activeToLabel(p.active),
+      'Observações':         p.notes || '',
+      'Cadastrado em':       p.createdAt ? isoToDisplay(p.createdAt.split('T')[0]) : '',
+    }
+  })
+}
+
+// ---- buildEvolutionsSheet ----
+// Uma linha por evolução clínica registrada (appointment.evolution)
+function buildEvolutionsSheet(appointments, patients) {
+  const patientMap = {}
+  patients.forEach(p => { patientMap[p.id] = p })
+
+  return appointments
+    .filter(apt => apt.evolution)
+    .slice()
+    .sort((a, b) => (a.evolution.data || a.date).localeCompare(b.evolution.data || b.date))
+    .map(apt => {
+      const patient = patientMap[apt.patientId] || {}
+      const e = apt.evolution
+      return {
+        'Paciente':            patient.name || 'Removido',
+        'Data':                isoToDisplay(e.data || apt.date),
+        'PA Inicial':          e.paInicial || '',
+        'PA Final':            e.paFinal || '',
+        'Saturação Inicial':   e.satInicial || '',
+        'Saturação Final':     e.satFinal || '',
+        'FC Inicial':          e.fcInicial || '',
+        'FC Final':            e.fcFinal || '',
+        'Evolução':            e.texto || '',
+      }
+    })
 }
 
 // ---- buildSummarySheet ----
@@ -117,6 +162,14 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
     XLSX.utils.book_append_sheet(wb, wsSum, 'Resumo Financeiro')
   }
 
+  // Aba 4: Evoluções (só se houver alguma registrada)
+  const evoRows = buildEvolutionsSheet(appointments, patients)
+  if (evoRows.length > 0) {
+    const wsEvo = XLSX.utils.json_to_sheet(evoRows)
+    applyColumnWidths(wsEvo, evoRows)
+    XLSX.utils.book_append_sheet(wb, wsEvo, 'Evoluções')
+  }
+
   // Gera nome do arquivo com data atual
   const today = new Date().toISOString().split('T')[0]
   const fullName = `${fileName}-${today}.xlsx`
@@ -128,5 +181,6 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
     fileName: fullName,
     appointmentsExported: appointments.length,
     patientsExported: patients.length,
+    evolutionsExported: evoRows.length,
   }
 }
