@@ -1,9 +1,10 @@
 // ===== Serviço de Exportação para Excel (.xlsx) =====
 // Gera um arquivo Excel com os dados atuais do sistema:
-//   Aba "Atendimentos"      — todos os agendamentos com nome do paciente
-//   Aba "Pacientes"         — cadastro completo de pacientes
-//   Aba "Resumo Financeiro" — totais por mês (só se houver atendimentos)
-//   Aba "Evoluções"         — evoluções clínicas registradas (só se houver alguma)
+//   Aba "Atendimentos"        — todos os agendamentos com nome do paciente
+//   Aba "Pacientes"           — cadastro completo de pacientes
+//   Aba "Tipos de Atendimento"— tipos configurados e seus preços (só se houver algum)
+//   Aba "Resumo Financeiro"   — totais por mês (só se houver atendimentos)
+//   Aba "Evoluções"           — evoluções clínicas registradas (só se houver alguma)
 
 import * as XLSX from 'xlsx'
 import {
@@ -16,6 +17,7 @@ import {
 import { calculateAge } from '../utils/helpers'
 import * as patientService from './patientService'
 import * as appointmentService from './appointmentService'
+import * as settingsService from './settingsService'
 
 // ---- buildAppointmentsSheet ----
 // Retorna array de objetos prontos para sheet_from_json.
@@ -99,6 +101,16 @@ function buildEvolutionsSheet(appointments, patients) {
     })
 }
 
+// ---- buildServiceTypesSheet ----
+// Tipos de atendimento configurados em Configurações, com seus preços padrão
+function buildServiceTypesSheet(serviceTypes) {
+  return (serviceTypes || []).map(t => ({
+    'Tipo':                     t.name,
+    'Preço Convênio (R$)':      t.convenioPrice ?? 0,
+    'Preço Particular (R$)':    t.particularPrice ?? 0,
+  }))
+}
+
 // ---- buildSummarySheet ----
 // Aba de resumo financeiro por mês
 function buildSummarySheet(appointments) {
@@ -146,6 +158,7 @@ function applyColumnWidths(ws, data) {
 export function exportToXLSX(fileName = 'agendafisio-export') {
   const patients = patientService.getAll()
   const appointments = appointmentService.getAll()
+  const settings = settingsService.getSettings()
 
   const wb = XLSX.utils.book_new()
 
@@ -161,7 +174,15 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
   applyColumnWidths(wsPat, patRows)
   XLSX.utils.book_append_sheet(wb, wsPat, 'Pacientes')
 
-  // Aba 3: Resumo Financeiro
+  // Aba 3: Tipos de Atendimento (só se houver algum configurado)
+  const typeRows = buildServiceTypesSheet(settings.serviceTypes)
+  if (typeRows.length > 0) {
+    const wsTypes = XLSX.utils.json_to_sheet(typeRows)
+    applyColumnWidths(wsTypes, typeRows)
+    XLSX.utils.book_append_sheet(wb, wsTypes, 'Tipos de Atendimento')
+  }
+
+  // Aba 4: Resumo Financeiro
   const summaryRows = buildSummarySheet(appointments)
   if (summaryRows.length > 0) {
     const wsSum = XLSX.utils.json_to_sheet(summaryRows)
@@ -169,7 +190,7 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
     XLSX.utils.book_append_sheet(wb, wsSum, 'Resumo Financeiro')
   }
 
-  // Aba 4: Evoluções (só se houver alguma registrada)
+  // Aba 5: Evoluções (só se houver alguma registrada)
   const evoRows = buildEvolutionsSheet(appointments, patients)
   if (evoRows.length > 0) {
     const wsEvo = XLSX.utils.json_to_sheet(evoRows)
@@ -189,5 +210,6 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
     appointmentsExported: appointments.length,
     patientsExported: patients.length,
     evolutionsExported: evoRows.length,
+    serviceTypesExported: typeRows.length,
   }
 }

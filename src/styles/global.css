@@ -909,6 +909,15 @@ body {
   border: 1px solid var(--gray-100);
 }
 
+.settings-section--danger {
+  border: 1.5px solid var(--danger-light);
+  background: #fffbfb;
+}
+
+.settings-section--danger .settings-title {
+  color: var(--danger);
+}
+
 .settings-title {
   font-size: 1rem;
   font-weight: 600;

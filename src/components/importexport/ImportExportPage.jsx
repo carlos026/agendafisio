@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
-import { parseFile, prepareImport, prepareEvolutions, executeImport } from '../../services/excelService'
+import { parseFile, prepareImport, prepareEvolutions, preparePatientDetails, prepareServiceTypes, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
 import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
@@ -15,14 +15,14 @@ const STEP = {
 }
 
 export default function ImportExportPage() {
-  const { setPage, refreshPatients, refreshAppointments, patients, appointments } = useApp()
+  const { setPage, refreshPatients, refreshAppointments, refreshSettings, patients, appointments } = useApp()
 
   // ---- estado de importação ----
   const [step, setStep]             = useState(STEP.IDLE)
   const [selectedFile, setFile]     = useState(null)
   const [parseError, setParseError] = useState('')
-  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped, evolutions, evolutionsSkipped }
-  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors }
+  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped, evolutions, evolutionsSkipped, patientDetails, serviceTypes }
+  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors, serviceTypesImported }
 
   // ---- estado de exportação ----
   const [exportMsg, setExportMsg]   = useState('')
@@ -50,10 +50,18 @@ export default function ImportExportPage() {
     setStep(STEP.PARSING)
     setParseError('')
     try {
-      const { appointmentRows, evolutionRows } = await parseFile(selectedFile)
+      const { appointmentRows, evolutionRows, patientRows, serviceTypeRows } = await parseFile(selectedFile)
       const prepared = prepareImport(appointmentRows)
       const preparedEvolutions = prepareEvolutions(evolutionRows, prepared.rows)
-      setPreview({ ...prepared, evolutions: preparedEvolutions.rows, evolutionsSkipped: preparedEvolutions.skipped })
+      const patientDetails = preparePatientDetails(patientRows)
+      const serviceTypes = prepareServiceTypes(serviceTypeRows)
+      setPreview({
+        ...prepared,
+        evolutions: preparedEvolutions.rows,
+        evolutionsSkipped: preparedEvolutions.skipped,
+        patientDetails,
+        serviceTypes,
+      })
       setStep(STEP.PREVIEW)
     } catch (err) {
       setParseError(err.message)
@@ -65,9 +73,10 @@ export default function ImportExportPage() {
     if (!preview) return
     setStep(STEP.IMPORTING)
     try {
-      const result = executeImport(preview.rows, preview.evolutions)
+      const result = executeImport(preview.rows, preview.evolutions, preview.patientDetails, preview.serviceTypes)
       refreshPatients()
       refreshAppointments()
+      refreshSettings()
       setResult(result)
       setStep(STEP.DONE)
     } catch (err) {
@@ -90,8 +99,9 @@ export default function ImportExportPage() {
   function handleExport() {
     try {
       const result = exportToXLSX('fisioterapia-pelvica')
-      const evoPart = result.evolutionsExported > 0 ? ` e ${result.evolutionsExported} evoluções` : ''
-      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos, ${result.patientsExported} pacientes${evoPart}.`)
+      const evoPart = result.evolutionsExported > 0 ? `, ${result.evolutionsExported} evoluções` : ''
+      const typesPart = result.serviceTypesExported > 0 ? ` e ${result.serviceTypesExported} tipos de atendimento` : ''
+      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos, ${result.patientsExported} pacientes${evoPart}${typesPart}.`)
       setTimeout(() => setExportMsg(''), 6000)
     } catch (err) {
       setExportMsg(`Erro ao exportar: ${err.message}`)
@@ -110,10 +120,13 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Importar Planilha</h2>
         <p className="ie-description">
-          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (abas <em>Atendimentos</em> e <em>Evoluções</em>)
-          quanto uma planilha externa com colunas: <em>Paciente, Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
-          Pacientes novos serão criados automaticamente. Evoluções só são importadas quando o atendimento correspondente
-          (mesmo paciente, data e horário) existir ou estiver sendo criado nesta mesma importação.
+          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (abas <em>Atendimentos</em>,
+          <em> Pacientes</em>, <em>Evoluções</em> e <em>Tipos de Atendimento</em>) quanto uma planilha externa com colunas: <em>Paciente,
+          Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
+          Pacientes novos serão criados automaticamente (enriquecidos com dados de nascimento, queixa principal etc. quando a aba
+          <em> Pacientes</em> estiver presente). Evoluções só são importadas quando o atendimento correspondente (mesmo paciente,
+          data e horário) existir ou estiver sendo criado nesta mesma importação. Se a aba <em>Tipos de Atendimento</em> estiver
+          presente, ela substitui os tipos configurados atualmente.
         </p>
 
         {/* Área de seleção de arquivo */}
@@ -177,6 +190,18 @@ export default function ImportExportPage() {
                   <span className="ie-stat-label">evoluções para importar</span>
                 </div>
               )}
+              {Object.keys(preview.patientDetails).length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{Object.keys(preview.patientDetails).length}</span>
+                  <span className="ie-stat-label">pacientes com dados cadastrais</span>
+                </div>
+              )}
+              {preview.serviceTypes.length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{preview.serviceTypes.length}</span>
+                  <span className="ie-stat-label">tipos de atendimento</span>
+                </div>
+              )}
               {preview.skipped.length > 0 && (
                 <div className="ie-stat ie-stat--warn">
                   <span className="ie-stat-num">{preview.skipped.length}</span>
@@ -196,6 +221,13 @@ export default function ImportExportPage() {
               <div className="ie-new-patients">
                 <strong>Novos pacientes:</strong>{' '}
                 {preview.newPatientNames.join(', ')}
+              </div>
+            )}
+
+            {/* Aviso: tipos de atendimento serão substituídos */}
+            {preview.serviceTypes.length > 0 && (
+              <div className="settings-info" style={{ marginBottom: '12px' }}>
+                Os tipos de atendimento configurados atualmente serão <strong>substituídos</strong> pelos {preview.serviceTypes.length} da planilha: {preview.serviceTypes.map(t => t.name).join(', ')}.
               </div>
             )}
 
@@ -287,6 +319,9 @@ export default function ImportExportPage() {
               {importResult.evolutionsImported.length > 0 && (
                 <span>{importResult.evolutionsImported.length} evoluções importadas</span>
               )}
+              {importResult.serviceTypesImported > 0 && (
+                <span>{importResult.serviceTypesImported} tipos de atendimento configurados</span>
+              )}
             </div>
             {importResult.errors.length > 0 && (
               <details className="ie-skipped">
@@ -315,8 +350,8 @@ export default function ImportExportPage() {
         <h2 className="ie-title">Exportar Dados</h2>
         <p className="ie-description">
           Gera um arquivo <strong>.xlsx</strong> com todas as informações atuais do sistema (inclui data de nascimento,
-          queixa principal, tipo de consulta e evoluções clínicas registradas).
-          O arquivo terá as abas <em>Atendimentos</em>, <em>Pacientes</em>, <em>Resumo Financeiro</em> e <em>Evoluções</em> (quando houver).
+          queixa principal, tipo de consulta, tipos de atendimento configurados e evoluções clínicas registradas).
+          O arquivo terá as abas <em>Atendimentos</em>, <em>Pacientes</em>, <em>Tipos de Atendimento</em>, <em>Resumo Financeiro</em> e <em>Evoluções</em> (quando houver).
         </p>
 
         <div className="ie-export-info">

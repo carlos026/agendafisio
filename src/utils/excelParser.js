@@ -117,6 +117,14 @@ export function activeToLabel(active) {
   return active !== false ? 'Ativo' : 'Desistiu'
 }
 
+// Interpreta a coluna "Situação" (formato da própria exportação) e retorna
+// o booleano `active`. Qualquer valor não reconhecido é tratado como ativo.
+export function parseActive(val) {
+  if (!val) return true
+  const v = val.toString().toLowerCase().trim()
+  return v !== 'desistiu' && v !== 'inativo'
+}
+
 // Formata data YYYY-MM-DD para DD/MM/YYYY (exibição)
 export function isoToDisplay(dateStr) {
   if (!dateStr) return ''

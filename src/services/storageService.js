@@ -27,4 +27,9 @@ function setItem(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-export { KEYS, getItem, getObject, setItem }
+// Remove todos os dados do sistema do localStorage (pacientes, agendamentos, configurações)
+function clearAll() {
+  Object.values(KEYS).forEach(key => localStorage.removeItem(key))
+}
+
+export { KEYS, getItem, getObject, setItem, clearAll }

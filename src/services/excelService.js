@@ -1,22 +1,26 @@
 // ===== Serviço de Importação de Planilha Excel =====
 // Lê arquivo .xlsx, mapeia colunas para o modelo de dados do sistema
-// e insere pacientes + agendamentos (e evoluções clínicas) novos.
+// e insere pacientes + agendamentos (evoluções clínicas e tipos de
+// atendimento) novos.
 //
 // Reconhece dois formatos de cabeçalho para a aba de atendimentos:
 //  - o gerado pela própria exportação do sistema (src/services/excelExport.js),
 //    para permitir reimportar um backup;
 //  - um formato legado de planilha externa (de um sistema anterior).
 //
-// A aba "Evoluções" (gerada pela própria exportação) também é reconhecida:
-// cada linha é religada ao atendimento exato através de "Paciente" +
-// "Data do Atendimento" + "Horário" (mesma chave usada para detectar
-// duplicatas de atendimento) — por isso uma evolução só é importada quando
-// o atendimento correspondente existe (já estava no sistema ou está sendo
-// criado neste mesmo import).
+// As abas "Pacientes", "Evoluções" e "Tipos de Atendimento" (geradas pela
+// própria exportação) também são reconhecidas:
+//  - "Pacientes" enriquece pacientes novos com data de nascimento, queixa
+//    principal, telefone, situação e observações — e cria diretamente
+//    pacientes que não têm nenhum atendimento na planilha;
+//  - "Evoluções" religa cada linha ao atendimento exato através de
+//    "Paciente" + "Data do Atendimento" + "Horário";
+//  - "Tipos de Atendimento" substitui a lista configurada em Configurações.
 
 import * as XLSX from 'xlsx'
 import * as patientService from './patientService'
 import * as appointmentService from './appointmentService'
+import * as settingsService from './settingsService'
 import {
   excelDateToISO,
   excelTimeToHHMM,
@@ -27,6 +31,7 @@ import {
   parseIntOrNull,
   parsePaid,
   parseAppointmentType,
+  parseActive,
 } from '../utils/excelParser'
 
 // Mapeamento: cabeçalho do Excel → chave interna normalizada (aba de atendimentos)
@@ -70,26 +75,51 @@ const EVOLUTION_COLUMN_MAP = {
   'Evolução':             'texto',
 }
 
+// Mapeamento de cabeçalhos da aba "Pacientes"
+const PATIENT_COLUMN_MAP = {
+  'Nome':                 'patientName',
+  'Data de Nascimento':   'birthDateRaw',
+  'Queixa Principal':     'mainComplaint',
+  'Telefone':             'phone',
+  'Convênio':             'convenioRaw',
+  'Situação':             'activeRaw',
+  'Observações':          'notes',
+}
+
+// Mapeamento de cabeçalhos da aba "Tipos de Atendimento"
+const SERVICE_TYPE_COLUMN_MAP = {
+  'Tipo':                       'typeName',
+  'Preço Convênio (R$)':        'convenioPriceRaw',
+  'Preço Particular (R$)':      'particularPriceRaw',
+}
+
 const EVOLUTION_SHEET_NAME = 'Evoluções'
+const PATIENT_SHEET_NAME = 'Pacientes'
+const SERVICE_TYPE_SHEET_NAME = 'Tipos de Atendimento'
 
 // Sheets que não contêm dados de atendimento (escala semanal, agenda simplificada,
 // e as demais abas geradas pela própria exportação do sistema)
-const NON_APPOINTMENT_SHEETS = new Set(['Agenda', 'Semana de Atendimentos', 'Pacientes', 'Resumo Financeiro', EVOLUTION_SHEET_NAME])
+const NON_APPOINTMENT_SHEETS = new Set([
+  'Agenda', 'Semana de Atendimentos',
+  PATIENT_SHEET_NAME, 'Resumo Financeiro', EVOLUTION_SHEET_NAME, SERVICE_TYPE_SHEET_NAME,
+])
 
-// Lê uma aba como array de objetos usando um COLUMN_MAP, filtrando linhas sem "Paciente"
-function readSheetRows(wb, sheetName, columnMap) {
+// Lê uma aba como array de objetos usando um columnMap, filtrando linhas sem
+// a coluna-chave (por padrão "Paciente"; "Nome" para a aba Pacientes, "Tipo"
+// para a aba Tipos de Atendimento).
+function readSheetRows(wb, sheetName, columnMap, keyHeader = 'Paciente') {
   const ws = wb.Sheets[sheetName]
   if (!ws) return []
   const raw = XLSX.utils.sheet_to_json(ws, { header: 1 })
   if (!raw || raw.length < 2) return []
 
   const headers = raw[0]
-  if (!headers.includes('Paciente')) return []
+  if (!headers.includes(keyHeader)) return []
 
   const rows = []
   raw.slice(1).forEach(row => {
-    const nameCell = row[headers.indexOf('Paciente')]
-    if (!nameCell) return
+    const keyCell = row[headers.indexOf(keyHeader)]
+    if (!keyCell) return
 
     const obj = { _sheet: sheetName }
     headers.forEach((header, i) => {
@@ -102,8 +132,8 @@ function readSheetRows(wb, sheetName, columnMap) {
 }
 
 // ---- parseFile ----
-// Lê um File .xlsx e retorna { appointmentRows, evolutionRows }, cada um
-// array de objetos com as colunas normalizadas (appointmentRows inclui `_sheet`).
+// Lê um File .xlsx e retorna { appointmentRows, evolutionRows, patientRows, serviceTypeRows },
+// cada um array de objetos com as colunas normalizadas.
 // Lança erro se o arquivo não for um xlsx válido ou não tiver abas reconhecíveis.
 export function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -120,20 +150,27 @@ export function parseFile(file) {
 
         const appointmentRows = []
         appointmentSheetNames.forEach(sheetName => {
-          appointmentRows.push(...readSheetRows(wb, sheetName, COLUMN_MAP))
+          appointmentRows.push(...readSheetRows(wb, sheetName, COLUMN_MAP, 'Paciente'))
         })
 
-        // Aba "Evoluções", se existir
         const evolutionRows = wb.SheetNames.includes(EVOLUTION_SHEET_NAME)
-          ? readSheetRows(wb, EVOLUTION_SHEET_NAME, EVOLUTION_COLUMN_MAP)
+          ? readSheetRows(wb, EVOLUTION_SHEET_NAME, EVOLUTION_COLUMN_MAP, 'Paciente')
           : []
 
-        if (appointmentRows.length === 0 && evolutionRows.length === 0) {
-          reject(new Error('Nenhum dado de atendimento ou evolução encontrado na planilha'))
+        const patientRows = wb.SheetNames.includes(PATIENT_SHEET_NAME)
+          ? readSheetRows(wb, PATIENT_SHEET_NAME, PATIENT_COLUMN_MAP, 'Nome')
+          : []
+
+        const serviceTypeRows = wb.SheetNames.includes(SERVICE_TYPE_SHEET_NAME)
+          ? readSheetRows(wb, SERVICE_TYPE_SHEET_NAME, SERVICE_TYPE_COLUMN_MAP, 'Tipo')
+          : []
+
+        if (appointmentRows.length === 0 && evolutionRows.length === 0 && patientRows.length === 0 && serviceTypeRows.length === 0) {
+          reject(new Error('Nenhum dado reconhecido na planilha'))
           return
         }
 
-        resolve({ appointmentRows, evolutionRows })
+        resolve({ appointmentRows, evolutionRows, patientRows, serviceTypeRows })
       } catch (err) {
         reject(new Error(`Erro ao processar planilha: ${err.message}`))
       }
@@ -141,6 +178,46 @@ export function parseFile(file) {
 
     reader.readAsArrayBuffer(file)
   })
+}
+
+// ---- preparePatientDetails ----
+// Recebe as linhas brutas da aba "Pacientes" e retorna um mapa
+// nome(minúsculo) → dados cadastrais, usado para enriquecer pacientes novos
+// (criados a partir de atendimentos) e para criar pacientes sem nenhum
+// atendimento na planilha.
+export function preparePatientDetails(patientRows) {
+  const map = {}
+  patientRows.forEach(raw => {
+    const name = raw.patientName?.toString().trim()
+    if (!name) return
+    map[name.toLowerCase()] = {
+      name,
+      birthDate: parseDateString(raw.birthDateRaw) || '',
+      mainComplaint: raw.mainComplaint?.toString().trim() || '',
+      phone: raw.phone?.toString().trim() || '',
+      convenio: parseConvenio(raw.convenioRaw),
+      active: parseActive(raw.activeRaw),
+      notes: raw.notes?.toString().trim() || '',
+    }
+  })
+  return map
+}
+
+// ---- prepareServiceTypes ----
+// Recebe as linhas brutas da aba "Tipos de Atendimento" e retorna a lista
+// pronta para substituir settings.serviceTypes.
+export function prepareServiceTypes(serviceTypeRows) {
+  return serviceTypeRows
+    .map(raw => {
+      const name = raw.typeName?.toString().trim()
+      if (!name) return null
+      return {
+        name,
+        convenioPrice: parseFloat(raw.convenioPriceRaw) || 0,
+        particularPrice: parseFloat(raw.particularPriceRaw) || 0,
+      }
+    })
+    .filter(Boolean)
 }
 
 // ---- prepareImport ----
@@ -318,10 +395,15 @@ export function prepareEvolutions(evolutionRows, preparedAppointmentRows) {
 }
 
 // ---- executeImport ----
-// Persiste efetivamente os dados preparados por prepareImport/prepareEvolutions.
-// Cria pacientes novos, agendamentos, e religa as evoluções aos atendimentos certos.
-// Retorna { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors }.
-export function executeImport(rows, evolutions = []) {
+// Persiste efetivamente os dados preparados por prepareImport/prepareEvolutions/
+// preparePatientDetails/prepareServiceTypes. Cria pacientes novos (enriquecidos
+// com dados da aba Pacientes quando disponíveis, incluindo pacientes sem
+// nenhum atendimento na planilha), agendamentos, religa as evoluções aos
+// atendimentos certos, e substitui os tipos de atendimento configurados
+// quando a aba correspondente estiver presente.
+// Retorna { patientsCreated, appointmentsCreated, errors, evolutionsImported,
+//           evolutionErrors, serviceTypesImported }.
+export function executeImport(rows, evolutions = [], patientDetails = {}, serviceTypes = null) {
   const existingPatients = patientService.getAll()
 
   // Índice atualizado de pacientes (incluindo os que serão criados)
@@ -341,21 +423,31 @@ export function executeImport(rows, evolutions = []) {
   const appointmentsCreated = []
   const errors = []
 
+  function createPatientFrom(name, fallbackConvenio) {
+    const nameKey = name.toLowerCase()
+    const details = patientDetails[nameKey]
+    const patient = patientService.add({
+      name,
+      convenio: details?.convenio || fallbackConvenio || '',
+      birthDate: details?.birthDate || '',
+      mainComplaint: details?.mainComplaint || '',
+      phone: details?.phone || '',
+      notes: details?.notes || '',
+      active: details ? details.active : true,
+    })
+    patientIndex[nameKey] = patient
+    patientsCreated.push(patient)
+    return patient
+  }
+
   rows.forEach((row, i) => {
     try {
       const nameKey = row.patientName.toLowerCase()
       let patient = patientIndex[nameKey]
 
-      // Cria paciente se não existir ainda
+      // Cria paciente se não existir ainda (enriquecido pela aba Pacientes, se houver)
       if (!patient) {
-        patient = patientService.add({
-          name: row.patientName,
-          convenio: row.convenio,
-          phone: '',
-          notes: '',
-        })
-        patientIndex[nameKey] = patient
-        patientsCreated.push(patient)
+        patient = createPatientFrom(row.patientName, row.convenio)
       }
 
       // Combina descrição (formato legado) + observação nas notas
@@ -386,6 +478,14 @@ export function executeImport(rows, evolutions = []) {
     }
   })
 
+  // Pacientes presentes na aba "Pacientes" mas sem nenhum atendimento na
+  // planilha (não foram criados pelo laço acima) — cria diretamente.
+  Object.keys(patientDetails).forEach(nameKey => {
+    if (!patientIndex[nameKey]) {
+      createPatientFrom(patientDetails[nameKey].name)
+    }
+  })
+
   const evolutionsImported = []
   const evolutionErrors = []
 
@@ -412,5 +512,11 @@ export function executeImport(rows, evolutions = []) {
     }
   })
 
-  return { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors }
+  let serviceTypesImported = 0
+  if (serviceTypes && serviceTypes.length > 0) {
+    settingsService.saveSettings({ serviceTypes })
+    serviceTypesImported = serviceTypes.length
+  }
+
+  return { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors, serviceTypesImported }
 }
