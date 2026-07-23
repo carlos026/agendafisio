@@ -1,6 +1,6 @@
 {
   "name": "fisioterapia-pelvica",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.16.0",
     "jspdf": "^2.5.2",
     "playwright": "^1.60.0",
     "react": "^18.3.1",

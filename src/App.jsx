@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import * as patientService from './services/patientService'
 import * as appointmentService from './services/appointmentService'
 import * as settingsService from './services/settingsService'
+import { onAuthChange } from './services/authService'
 import Header from './components/layout/Header'
 import BottomNav from './components/layout/BottomNav'
 import Dashboard from './components/dashboard/Dashboard'
@@ -10,6 +11,7 @@ import AgendaPage from './components/agenda/AgendaPage'
 import FinancePage from './components/finance/FinancePage'
 import SettingsPage from './components/settings/SettingsPage'
 import ImportExportPage from './components/importexport/ImportExportPage'
+import LoginPage from './components/auth/LoginPage'
 
 // Contexto global — qualquer componente pode acessar pacientes e agendamentos
 export const AppContext = createContext()
@@ -30,6 +32,18 @@ const PAGE_TITLES = {
 export default function App() {
   const [page, setPage] = useState('dashboard')
 
+  // Sessão de autenticação (Firebase Auth)
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  useEffect(() => {
+    const unsubscribe = onAuthChange(firebaseUser => {
+      setUser(firebaseUser)
+      setAuthLoading(false)
+    })
+    return unsubscribe
+  }, [])
+
   // Carrega dados do localStorage na inicialização
   const [patients, setPatients] = useState(() => patientService.getAll())
   const [appointments, setAppointments] = useState(() => appointmentService.getAll())
@@ -48,6 +62,14 @@ export default function App() {
     setSettings(settingsService.getSettings())
   }, [])
 
+  if (authLoading) {
+    return <div className="login-page" />
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
+
   return (
     <AppContext.Provider value={{
       page,
@@ -55,12 +77,13 @@ export default function App() {
       patients,
       appointments,
       settings,
+      user,
       refreshPatients,
       refreshAppointments,
       refreshSettings,
     }}>
       <div className="app">
-        <Header title={PAGE_TITLES[page]} />
+        <Header title={PAGE_TITLES[page]} userEmail={user.email} />
 
         <main className="main-content">
           {page === 'dashboard' && <Dashboard />}
