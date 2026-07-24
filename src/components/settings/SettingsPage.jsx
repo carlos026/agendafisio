@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import * as settingsService from '../../services/settingsService'
 import { useApp } from '../../App'
+import ClearDataModal from './ClearDataModal'
 
 function normalizeTypes(raw) {
   return (raw || []).map(t =>
@@ -19,13 +20,25 @@ function serializeTypes(types) {
 }
 
 export default function SettingsPage() {
-  const { refreshSettings, setPage } = useApp()
+  const { refreshSettings, refreshPatients, refreshAppointments, patients, appointments, setPage } = useApp()
   const initial = settingsService.getSettings()
 
   const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes))
   const [newType, setNewType] = useState('')
   const [typeError, setTypeError] = useState('')
   const [carimboText, setCarimboText] = useState(initial.carimboText || '')
+  const [showClearData, setShowClearData] = useState(false)
+  const [clearedMsg, setClearedMsg] = useState('')
+
+  function handleDataCleared() {
+    setShowClearData(false)
+    refreshPatients()
+    refreshAppointments()
+    refreshSettings()
+    setServiceTypes([])
+    setCarimboText('')
+    setClearedMsg('✓ Todos os dados foram apagados.')
+  }
 
   function handleCarimboBlur() {
     settingsService.saveSettings({ carimboText: carimboText.trim() })
@@ -177,6 +190,33 @@ export default function SettingsPage() {
           📊 Gerenciar Planilhas
         </button>
       </div>
+
+      {/* Zona de Perigo */}
+      <div className="settings-section settings-section--danger">
+        <h2 className="settings-title">Zona de Perigo</h2>
+        <p className="settings-description">
+          Apaga permanentemente todos os pacientes, agendamentos, evoluções clínicas e configurações deste dispositivo.
+          Recomendamos exportar um backup antes.
+        </p>
+        <button
+          className="btn btn-danger btn-full"
+          onClick={() => { setShowClearData(true); setClearedMsg('') }}
+        >
+          🗑️ Limpar Todos os Dados
+        </button>
+        {clearedMsg && (
+          <div className="ie-export-msg ie-export-msg--success">{clearedMsg}</div>
+        )}
+      </div>
+
+      {showClearData && (
+        <ClearDataModal
+          patients={patients}
+          appointments={appointments}
+          onClose={() => setShowClearData(false)}
+          onCleared={handleDataCleared}
+        />
+      )}
     </div>
   )
 }

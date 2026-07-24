@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
-import { parseFile, prepareImport, executeImport } from '../../services/excelService'
+import { parseFile, prepareImport, prepareEvolutions, preparePatientDetails, prepareServiceTypes, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
 import { importLocalDataToFirebase } from '../../services/firebaseImportService'
 import { isoToDisplay, statusToLabel } from '../../utils/excelParser'
+import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
 
 // Estados do fluxo de importação
@@ -16,14 +17,15 @@ const STEP = {
 }
 
 export default function ImportExportPage() {
-  const { setPage, refreshPatients, refreshAppointments, patients, appointments, user } = useApp()
+
+  const { setPage, refreshPatients, refreshAppointments, refreshSettings, patients, appointments } = useApp()
 
   // ---- estado de importação ----
   const [step, setStep]             = useState(STEP.IDLE)
   const [selectedFile, setFile]     = useState(null)
   const [parseError, setParseError] = useState('')
-  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped }
-  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors }
+  const [preview, setPreview]       = useState(null)  // { rows, newPatientNames, skipped, evolutions, evolutionsSkipped, patientDetails, serviceTypes }
+  const [importResult, setResult]   = useState(null)  // { patientsCreated, appointmentsCreated, errors, evolutionsImported, evolutionErrors, serviceTypesImported }
 
   // ---- estado de exportação ----
   const [exportMsg, setExportMsg]   = useState('')
@@ -55,9 +57,18 @@ export default function ImportExportPage() {
     setStep(STEP.PARSING)
     setParseError('')
     try {
-      const rawRows = await parseFile(selectedFile)
-      const prepared = prepareImport(rawRows)
-      setPreview(prepared)
+      const { appointmentRows, evolutionRows, patientRows, serviceTypeRows } = await parseFile(selectedFile)
+      const prepared = prepareImport(appointmentRows)
+      const preparedEvolutions = prepareEvolutions(evolutionRows, prepared.rows)
+      const patientDetails = preparePatientDetails(patientRows)
+      const serviceTypes = prepareServiceTypes(serviceTypeRows)
+      setPreview({
+        ...prepared,
+        evolutions: preparedEvolutions.rows,
+        evolutionsSkipped: preparedEvolutions.skipped,
+        patientDetails,
+        serviceTypes,
+      })
       setStep(STEP.PREVIEW)
     } catch (err) {
       setParseError(err.message)
@@ -69,9 +80,10 @@ export default function ImportExportPage() {
     if (!preview) return
     setStep(STEP.IMPORTING)
     try {
-      const result = executeImport(preview.rows)
+      const result = executeImport(preview.rows, preview.evolutions, preview.patientDetails, preview.serviceTypes)
       refreshPatients()
       refreshAppointments()
+      refreshSettings()
       setResult(result)
       setStep(STEP.DONE)
     } catch (err) {
@@ -94,7 +106,9 @@ export default function ImportExportPage() {
   function handleExport() {
     try {
       const result = exportToXLSX('fisioterapia-pelvica')
-      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos e ${result.patientsExported} pacientes.`)
+      const evoPart = result.evolutionsExported > 0 ? `, ${result.evolutionsExported} evoluções` : ''
+      const typesPart = result.serviceTypesExported > 0 ? ` e ${result.serviceTypesExported} tipos de atendimento` : ''
+      setExportMsg(`✓ Arquivo "${result.fileName}" baixado com ${result.appointmentsExported} atendimentos, ${result.patientsExported} pacientes${evoPart}${typesPart}.`)
       setTimeout(() => setExportMsg(''), 6000)
     } catch (err) {
       setExportMsg(`Erro ao exportar: ${err.message}`)
@@ -128,8 +142,13 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Importar Planilha</h2>
         <p className="ie-description">
-          Selecione um arquivo <strong>.xlsx</strong> com colunas: <em>Paciente, Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
-          Pacientes novos serão criados automaticamente.
+          Selecione um arquivo <strong>.xlsx</strong> — aceita tanto um arquivo exportado por este sistema (abas <em>Atendimentos</em>,
+          <em> Pacientes</em>, <em>Evoluções</em> e <em>Tipos de Atendimento</em>) quanto uma planilha externa com colunas: <em>Paciente,
+          Data do Atendimento, Horário, Status, Valor, Status Pagamento</em>.
+          Pacientes novos serão criados automaticamente (enriquecidos com dados de nascimento, queixa principal etc. quando a aba
+          <em> Pacientes</em> estiver presente). Evoluções só são importadas quando o atendimento correspondente (mesmo paciente,
+          data e horário) existir ou estiver sendo criado nesta mesma importação. Se a aba <em>Tipos de Atendimento</em> estiver
+          presente, ela substitui os tipos configurados atualmente.
         </p>
 
         {/* Área de seleção de arquivo */}
@@ -187,10 +206,34 @@ export default function ImportExportPage() {
                 <span className="ie-stat-num">{preview.newPatientNames.length}</span>
                 <span className="ie-stat-label">novos pacientes</span>
               </div>
+              {preview.evolutions.length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{preview.evolutions.length}</span>
+                  <span className="ie-stat-label">evoluções para importar</span>
+                </div>
+              )}
+              {Object.keys(preview.patientDetails).length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{Object.keys(preview.patientDetails).length}</span>
+                  <span className="ie-stat-label">pacientes com dados cadastrais</span>
+                </div>
+              )}
+              {preview.serviceTypes.length > 0 && (
+                <div className="ie-stat">
+                  <span className="ie-stat-num">{preview.serviceTypes.length}</span>
+                  <span className="ie-stat-label">tipos de atendimento</span>
+                </div>
+              )}
               {preview.skipped.length > 0 && (
                 <div className="ie-stat ie-stat--warn">
                   <span className="ie-stat-num">{preview.skipped.length}</span>
                   <span className="ie-stat-label">linhas ignoradas</span>
+                </div>
+              )}
+              {preview.evolutionsSkipped.length > 0 && (
+                <div className="ie-stat ie-stat--warn">
+                  <span className="ie-stat-num">{preview.evolutionsSkipped.length}</span>
+                  <span className="ie-stat-label">evoluções ignoradas</span>
                 </div>
               )}
             </div>
@@ -200,6 +243,13 @@ export default function ImportExportPage() {
               <div className="ie-new-patients">
                 <strong>Novos pacientes:</strong>{' '}
                 {preview.newPatientNames.join(', ')}
+              </div>
+            )}
+
+            {/* Aviso: tipos de atendimento serão substituídos */}
+            {preview.serviceTypes.length > 0 && (
+              <div className="settings-info" style={{ marginBottom: '12px' }}>
+                Os tipos de atendimento configurados atualmente serão <strong>substituídos</strong> pelos {preview.serviceTypes.length} da planilha: {preview.serviceTypes.map(t => t.name).join(', ')}.
               </div>
             )}
 
@@ -215,6 +265,18 @@ export default function ImportExportPage() {
               </details>
             )}
 
+            {/* Evoluções ignoradas */}
+            {preview.evolutionsSkipped.length > 0 && (
+              <details className="ie-skipped">
+                <summary>{preview.evolutionsSkipped.length} evolução(ões) ignorada(s) — clique para ver</summary>
+                <ul>
+                  {preview.evolutionsSkipped.map((s, i) => (
+                    <li key={i}>Linha {s.lineNum}: {s.reason}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
             {/* Tabela de preview (máx. 30 linhas) */}
             {preview.rows.length > 0 && (
               <div className="ie-table-wrap">
@@ -224,6 +286,7 @@ export default function ImportExportPage() {
                       <th>Paciente</th>
                       <th>Data</th>
                       <th>Horário</th>
+                      <th>Tipo</th>
                       <th>Status</th>
                       <th>Valor</th>
                       <th>Pago</th>
@@ -239,10 +302,11 @@ export default function ImportExportPage() {
                         </td>
                         <td>{isoToDisplay(row.date)}</td>
                         <td>{row.time}</td>
+                        <td>{appointmentTypeToLabel(row.appointmentType)}</td>
                         <td>{statusToLabel(row.status)}</td>
                         <td>{formatCurrency(row.value)}</td>
                         <td>{row.paid ? '✓' : '○'}</td>
-                        <td className="ie-notes-cell">{row.description || row.notes || '—'}</td>
+                        <td className="ie-notes-cell">{[row.description, row.notes].filter(Boolean).join(' | ') || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -274,11 +338,23 @@ export default function ImportExportPage() {
               {importResult.patientsCreated.length > 0 && (
                 <span>{importResult.patientsCreated.length} novos pacientes criados</span>
               )}
+              {importResult.evolutionsImported.length > 0 && (
+                <span>{importResult.evolutionsImported.length} evoluções importadas</span>
+              )}
+              {importResult.serviceTypesImported > 0 && (
+                <span>{importResult.serviceTypesImported} tipos de atendimento configurados</span>
+              )}
             </div>
             {importResult.errors.length > 0 && (
               <details className="ie-skipped">
                 <summary>{importResult.errors.length} erro(s)</summary>
                 <ul>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+              </details>
+            )}
+            {importResult.evolutionErrors.length > 0 && (
+              <details className="ie-skipped">
+                <summary>{importResult.evolutionErrors.length} erro(s) em evoluções</summary>
+                <ul>{importResult.evolutionErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>
               </details>
             )}
             <button className="btn btn-primary" style={{ marginTop: '12px' }} onClick={() => setPage('agenda')}>
@@ -295,8 +371,9 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Exportar Dados</h2>
         <p className="ie-description">
-          Gera um arquivo <strong>.xlsx</strong> com todas as informações atuais do sistema.
-          O arquivo terá 3 abas: <em>Atendimentos</em>, <em>Pacientes</em> e <em>Resumo Financeiro</em>.
+          Gera um arquivo <strong>.xlsx</strong> com todas as informações atuais do sistema (inclui data de nascimento,
+          queixa principal, tipo de consulta, tipos de atendimento configurados e evoluções clínicas registradas).
+          O arquivo terá as abas <em>Atendimentos</em>, <em>Pacientes</em>, <em>Tipos de Atendimento</em>, <em>Resumo Financeiro</em> e <em>Evoluções</em> (quando houver).
         </p>
 
         <div className="ie-export-info">

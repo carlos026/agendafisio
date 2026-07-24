@@ -22,7 +22,7 @@ export function add(data) {
     phone: data.phone?.trim() || '',
     notes: data.notes?.trim() || '',
     convenio: data.convenio || '',
-    active: true,
+    active: data.active !== false,
     createdAt: new Date().toISOString(),
   }
   setItem(KEYS.PATIENTS, [...patients, patient])
