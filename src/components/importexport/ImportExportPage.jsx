@@ -3,7 +3,6 @@ import { useApp } from '../../App'
 import { parseFile, prepareImport, prepareEvolutions, preparePatientDetails, prepareServiceTypes, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
 import { importLocalDataToFirebase } from '../../services/firebaseImportService'
-import { isoToDisplay, statusToLabel } from '../../utils/excelParser'
 import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
 
@@ -18,7 +17,7 @@ const STEP = {
 
 export default function ImportExportPage() {
 
-  const { setPage, refreshPatients, refreshAppointments, refreshSettings, patients, appointments } = useApp()
+  const { setPage, refreshPatients, refreshAppointments, refreshSettings, patients, appointments, user } = useApp()
 
   // ---- estado de importação ----
   const [step, setStep]             = useState(STEP.IDLE)
