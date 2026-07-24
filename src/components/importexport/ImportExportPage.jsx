@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
 import { parseFile, prepareImport, prepareEvolutions, preparePatientDetails, prepareServiceTypes, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
+import { importLocalDataToFirebase } from '../../services/firebaseImportService'
+import { isoToDisplay, statusToLabel } from '../../utils/excelParser'
 import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
 
@@ -15,6 +17,7 @@ const STEP = {
 }
 
 export default function ImportExportPage() {
+
   const { setPage, refreshPatients, refreshAppointments, refreshSettings, patients, appointments } = useApp()
 
   // ---- estado de importação ----
@@ -26,6 +29,10 @@ export default function ImportExportPage() {
 
   // ---- estado de exportação ----
   const [exportMsg, setExportMsg]   = useState('')
+
+  // ---- estado de sincronização com o Firebase ----
+  const [firebaseSyncing, setFirebaseSyncing] = useState(false)
+  const [firebaseMsg, setFirebaseMsg]         = useState('')
 
   const fileInputRef = useRef(null)
 
@@ -105,6 +112,21 @@ export default function ImportExportPage() {
       setTimeout(() => setExportMsg(''), 6000)
     } catch (err) {
       setExportMsg(`Erro ao exportar: ${err.message}`)
+    }
+  }
+
+  // ---- handler de sincronização com o Firebase ----
+
+  async function handleFirebaseImport() {
+    setFirebaseSyncing(true)
+    setFirebaseMsg('')
+    try {
+      const result = await importLocalDataToFirebase(user.uid)
+      setFirebaseMsg(`✓ Importado: ${result.patientsImported} pacientes, ${result.appointmentsImported} atendimentos e configurações.`)
+    } catch (err) {
+      setFirebaseMsg(`Erro ao importar para o Firebase: ${err.message}`)
+    } finally {
+      setFirebaseSyncing(false)
     }
   }
 
@@ -375,6 +397,30 @@ export default function ImportExportPage() {
         {exportMsg && (
           <div className={`ie-export-msg ${exportMsg.startsWith('Erro') ? 'ie-export-msg--error' : 'ie-export-msg--success'}`}>
             {exportMsg}
+          </div>
+        )}
+      </section>
+
+      {/* ===== SEÇÃO: SINCRONIZAÇÃO COM O FIREBASE ===== */}
+      <section className="ie-section">
+        <h2 className="ie-title">Sincronizar com o Firebase</h2>
+        <p className="ie-description">
+          Copia os dados atuais deste dispositivo (pacientes, agendamentos e configurações) para o Firebase.
+          O sistema continua funcionando normalmente neste dispositivo — isso apenas cria/atualiza uma cópia na nuvem.
+        </p>
+
+        <button
+          className="btn btn-primary btn-full"
+          style={{ marginTop: '12px' }}
+          onClick={handleFirebaseImport}
+          disabled={firebaseSyncing}
+        >
+          {firebaseSyncing ? 'Importando...' : '☁️ Importar para o Firebase'}
+        </button>
+
+        {firebaseMsg && (
+          <div className={`ie-export-msg ${firebaseMsg.startsWith('Erro') ? 'ie-export-msg--error' : 'ie-export-msg--success'}`}>
+            {firebaseMsg}
           </div>
         )}
       </section>
