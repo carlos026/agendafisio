@@ -22,7 +22,6 @@ export default function PatientForm({ patient, onSave, onClose }) {
 
   function handleSubmit() {
     if (!form.name.trim()) { setError('O nome é obrigatório'); return }
-    if (!form.birthDate)                  { setError('A data de nascimento é obrigatória'); return }
     if (!form.mainComplaint.trim())       { setError('A queixa principal é obrigatória'); return }
     onSave(form)
   }
@@ -55,7 +54,7 @@ export default function PatientForm({ patient, onSave, onClose }) {
       </div>
 
       <div className="form-group">
-        <label className="form-label">Data de Nascimento *</label>
+        <label className="form-label">Data de Nascimento</label>
         <input
           type="date"
           className="form-input"
