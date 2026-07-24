@@ -77,10 +77,15 @@ export default function AgendaPage() {
 
   // ── handlers ──
   function handleSave(data) {
+    let savedId
     if (editing) {
       appointmentService.update(editing.id, data)
+      savedId = editing.id
     } else {
-      appointmentService.add(data)
+      savedId = appointmentService.add(data).id
+    }
+    if (data.appointmentType !== 'avaliacao') {
+      appointmentService.syncTotalSessionsForPatient(data.patientId, data.totalSessions, savedId)
     }
     refreshAppointments()
     closeForm()

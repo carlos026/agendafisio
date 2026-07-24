@@ -60,6 +60,18 @@ export function remove(id) {
   setItem(KEYS.APPOINTMENTS, getAll().filter(a => a.id !== id))
 }
 
+// Sincroniza a Qtd. de Sessões entre todos os agendamentos (não avaliação) de um
+// mesmo paciente, mantendo o mesmo plano de tratamento consistente entre as sessões
+export function syncTotalSessionsForPatient(patientId, totalSessions, excludeId) {
+  const value = totalSessions ? parseInt(totalSessions, 10) : null
+  const appointments = getAll().map(a =>
+    a.patientId === patientId && a.id !== excludeId && a.appointmentType !== 'avaliacao'
+      ? { ...a, totalSessions: value }
+      : a
+  )
+  setItem(KEYS.APPOINTMENTS, appointments)
+}
+
 // Alterna o status de pago/não pago de um agendamento
 export function togglePaid(id) {
   const appointments = getAll().map(a =>

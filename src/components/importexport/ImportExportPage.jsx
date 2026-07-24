@@ -2,9 +2,10 @@ import React, { useState, useRef } from 'react'
 import { useApp } from '../../App'
 import { parseFile, prepareImport, prepareEvolutions, preparePatientDetails, prepareServiceTypes, executeImport } from '../../services/excelService'
 import { exportToXLSX } from '../../services/excelExport'
-import { importLocalDataToFirebase } from '../../services/firebaseImportService'
+import { importLocalDataToFirebase, downloadDataFromFirebase } from '../../services/firebaseImportService'
 import { isoToDisplay, statusToLabel, appointmentTypeToLabel } from '../../utils/excelParser'
 import { formatCurrency } from '../../utils/helpers'
+import Modal from '../ui/Modal'
 
 // Estados do fluxo de importação
 const STEP = {
@@ -30,8 +31,10 @@ export default function ImportExportPage() {
   const [exportMsg, setExportMsg]   = useState('')
 
   // ---- estado de sincronização com o Firebase ----
-  const [firebaseSyncing, setFirebaseSyncing] = useState(false)
-  const [firebaseMsg, setFirebaseMsg]         = useState('')
+  const [firebaseSyncing, setFirebaseSyncing]     = useState(false)
+  const [firebaseMsg, setFirebaseMsg]             = useState('')
+  const [downloadSyncing, setDownloadSyncing]     = useState(false)
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -126,6 +129,23 @@ export default function ImportExportPage() {
       setFirebaseMsg(`Erro ao importar para o Firebase: ${err.message}`)
     } finally {
       setFirebaseSyncing(false)
+    }
+  }
+
+  async function handleFirebaseDownload() {
+    setShowDownloadConfirm(false)
+    setDownloadSyncing(true)
+    setFirebaseMsg('')
+    try {
+      const result = await downloadDataFromFirebase(user.uid)
+      refreshPatients()
+      refreshAppointments()
+      refreshSettings()
+      setFirebaseMsg(`✓ Baixado: ${result.patientsDownloaded} pacientes, ${result.appointmentsDownloaded} atendimentos e configurações.`)
+    } catch (err) {
+      setFirebaseMsg(`Erro ao baixar do Firebase: ${err.message}`)
+    } finally {
+      setDownloadSyncing(false)
     }
   }
 
@@ -404,17 +424,25 @@ export default function ImportExportPage() {
       <section className="ie-section">
         <h2 className="ie-title">Sincronizar com o Firebase</h2>
         <p className="ie-description">
-          Copia os dados atuais deste dispositivo (pacientes, agendamentos e configurações) para o Firebase.
-          O sistema continua funcionando normalmente neste dispositivo — isso apenas cria/atualiza uma cópia na nuvem.
+          Cada botão faz uma cópia manual numa direção — não há sincronização automática entre dispositivos.
         </p>
 
         <button
           className="btn btn-primary btn-full"
-          style={{ marginTop: '12px' }}
+          style={{ marginTop: '4px' }}
           onClick={handleFirebaseImport}
-          disabled={firebaseSyncing}
+          disabled={firebaseSyncing || downloadSyncing}
         >
-          {firebaseSyncing ? 'Importando...' : '☁️ Importar para o Firebase'}
+          {firebaseSyncing ? 'Enviando...' : '☁️ Enviar deste dispositivo para o Firebase'}
+        </button>
+
+        <button
+          className="btn btn-outline btn-full"
+          style={{ marginTop: '8px' }}
+          onClick={() => setShowDownloadConfirm(true)}
+          disabled={firebaseSyncing || downloadSyncing}
+        >
+          {downloadSyncing ? 'Baixando...' : '⬇️ Baixar do Firebase para este dispositivo'}
         </button>
 
         {firebaseMsg && (
@@ -423,6 +451,24 @@ export default function ImportExportPage() {
           </div>
         )}
       </section>
+
+      {showDownloadConfirm && (
+        <Modal
+          title="Baixar do Firebase"
+          onClose={() => setShowDownloadConfirm(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost btn-full" onClick={() => setShowDownloadConfirm(false)}>Cancelar</button>
+              <button className="btn btn-danger btn-full" onClick={handleFirebaseDownload}>Substituir dados locais</button>
+            </>
+          }
+        >
+          <div className="alert-error">
+            Isso vai <strong>substituir</strong> os dados deste dispositivo ({patients.length} pacientes, {appointments.length} agendamentos)
+            pelo que estiver salvo no Firebase. Qualquer alteração feita aqui e ainda não enviada ao Firebase será perdida.
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

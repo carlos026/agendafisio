@@ -106,6 +106,25 @@ export default function AppointmentForm({ appointment, patients, appointments, s
     if (hasTotalSessions && !form.sessionNumber)     { setError('Informe o número da sessão'); return }
     if (!form.date)                                  { setError('Informe a data'); return }
     if (!form.time)                                  { setError('Informe o horário'); return }
+
+    // Qtd. de Sessões é compartilhada entre todos os agendamentos do paciente: não deixa
+    // reduzir para um valor menor que uma sessão que já existe (ficaria "negativo")
+    if (hasTotalSessions) {
+      const newTotal = parseInt(form.totalSessions, 10)
+      const otherApts = (appointments || []).filter(
+        a => a.patientId === form.patientId && a.appointmentType !== 'avaliacao' &&
+             a.status !== 'cancelled' && a.id !== appointment?.id
+      )
+      const maxSessionNumber = otherApts.reduce(
+        (max, a) => Math.max(max, a.sessionNumber || 0),
+        parseInt(form.sessionNumber, 10) || 0
+      )
+      if (newTotal < maxSessionNumber) {
+        setError(`Não é possível definir ${newTotal} sessões: este paciente já possui a sessão ${maxSessionNumber} registrada`)
+        return
+      }
+    }
+
     onSave(form)
   }
 
