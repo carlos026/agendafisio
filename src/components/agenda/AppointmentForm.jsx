@@ -5,8 +5,22 @@ import { getTodayString } from '../../utils/helpers'
 
 export default function AppointmentForm({ appointment, patients, appointments, settings, onSave, onClose }) {
   const serviceTypes = settings?.serviceTypes || []
-  // Apenas pacientes ativos aparecem no dropdown de novo agendamento
-  const activePatients = patients.filter(p => p.active !== false)
+
+  // Paciente já concluiu o plano de sessões (nº da última sessão atingiu a Qtd. de Sessões)?
+  function reachedSessionLimit(patientId) {
+    const sessionApts = (appointments || []).filter(
+      a => a.patientId === patientId && a.appointmentType !== 'avaliacao' && a.status !== 'cancelled' && a.totalSessions
+    )
+    if (sessionApts.length === 0) return false
+    const maxSessionNumber = Math.max(0, ...sessionApts.map(a => a.sessionNumber || 0))
+    return maxSessionNumber >= sessionApts[0].totalSessions
+  }
+
+  // No dropdown de paciente ficam de fora: desistentes e quem já concluiu as sessões
+  // (exceto o paciente do próprio agendamento em edição, que deve continuar visível)
+  const activePatients = patients.filter(p =>
+    p.active !== false && (p.id === appointment?.patientId || !reachedSessionLimit(p.id))
+  )
 
   const [form, setForm] = useState({
     patientId:       appointment?.patientId       || '',
