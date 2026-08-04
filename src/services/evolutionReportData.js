@@ -78,10 +78,10 @@ export function buildEvolutionReportData({ patientId, patients, appointments, ca
   return {
     patient: {
       name: patient.name,
-      ageLabel: age === null ? NAO_INFORMADO : `${age} anos`,
-      birthDateLabel: patient.birthDate ? formatDate(patient.birthDate) : NAO_INFORMADO,
-      mainComplaintLabel: patient.mainComplaint?.trim() || NAO_INFORMADO,
-      avaliacaoDateLabel: avaliacaoDate ? formatDate(avaliacaoDate) : NAO_INFORMADO,
+      ageLabel: age === null ? '' : `${age} anos`,
+      birthDateLabel: patient.birthDate ? formatDate(patient.birthDate) : '',
+      mainComplaintLabel: patient.mainComplaint?.trim() || '',
+      avaliacaoDateLabel: avaliacaoDate ? formatDate(avaliacaoDate) : '',
     },
     evolutions,
     carimboText: carimboText?.trim() || '',
