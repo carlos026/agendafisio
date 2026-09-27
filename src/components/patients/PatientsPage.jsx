@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useApp } from '../../App'
 import * as patientService from '../../services/patientService'
-import { getInitials } from '../../utils/helpers'
+import { getInitials, getTodayString, getLastPlanSession } from '../../utils/helpers'
 import PatientForm from './PatientForm'
 
 const CONVENIO_LABEL = { convenio: 'Convênio', particular: 'Particular' }
@@ -11,16 +11,15 @@ export default function PatientsPage() {
   const [search, setSearch]             = useState('')
   const [showForm, setShowForm]         = useState(false)
   const [editing, setEditing]           = useState(null)
+  const [showConcluidos, setShowConcluidos] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
   const [showNaoIniciou, setShowNaoIniciou] = useState(false)
 
-  // Separa ativos de inativos, aplicando filtro de busca em ambos
   const query = search.toLowerCase()
   const matches = p =>
     p.name.toLowerCase().includes(query) || (p.phone || '').includes(query)
 
-  const activePatients   = patients.filter(p => p.active !== false && matches(p))
-  const inactivePatients = patients.filter(p => p.active === false && matches(p))
+  const today = getTodayString()
 
   // Pacientes com avaliação marcada como "Não iniciou sessões"
   // Busca o agendamento mais recente com essa flag para exibir a data
@@ -30,8 +29,34 @@ export default function PatientsPage() {
       if (!acc[a.patientId] || a.date > acc[a.patientId].date) acc[a.patientId] = a
       return acc
     }, {})
-  const naoIniciouPatients = patients
-    .filter(p => naoIniciouMap[p.id] && matches(p))
+
+  // Tem alguma sessão (não avaliação) agendada/realizada? Se sim, iniciou o tratamento
+  const hasSessions = patientId => (appointments || []).some(
+    a => a.patientId === patientId && a.appointmentType !== 'avaliacao' && a.status !== 'cancelled'
+  )
+
+  // Classifica cada paciente em um único grupo (prioridade: desistiu > concluiu > não iniciou > ativo)
+  // Concluiu = a última sessão do plano já aconteceu (data <= hoje)
+  function getGroup(p) {
+    if (p.active === false) return 'desistiu'
+    const lastSession = getLastPlanSession(p.id, appointments)
+    if (lastSession && lastSession.date <= today) return 'concluiu'
+    if (naoIniciouMap[p.id] && !hasSessions(p.id)) return 'naoIniciou'
+    return 'ativo'
+  }
+
+  const groups = { ativo: [], concluiu: [], desistiu: [], naoIniciou: [] }
+  patients.filter(matches).forEach(p => groups[getGroup(p)].push(p))
+  const {
+    ativo: activePatients,
+    concluiu: concluidoPatients,
+    desistiu: inactivePatients,
+    naoIniciou: naoIniciouPatients,
+  } = groups
+  const hasAnyPatient = patients.some(matches)
+
+  // Data da última sessão do plano, para exibir no card dos concluídos
+  const concluidoDate = id => getLastPlanSession(id, appointments)?.date
 
   function handleSave(data) {
     if (editing) {
@@ -75,7 +100,7 @@ export default function PatientsPage() {
       </div>
 
       {/* ---- Lista de pacientes ativos ---- */}
-      {activePatients.length === 0 && inactivePatients.length === 0 ? (
+      {!hasAnyPatient ? (
         <div className="empty-state">
           <div className="empty-icon">👥</div>
           <div className="empty-text">
@@ -83,7 +108,7 @@ export default function PatientsPage() {
           </div>
           {!search && <div className="empty-subtext">Toque no + para adicionar</div>}
         </div>
-      ) : activePatients.length === 0 && search ? (
+      ) : activePatients.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">👥</div>
           <div className="empty-text">Nenhum paciente ativo encontrado</div>
@@ -98,6 +123,38 @@ export default function PatientsPage() {
               onDelete={() => handleDelete(patient.id)}
             />
           ))}
+        </div>
+      )}
+
+      {/* ---- Seção: Sessões concluídas ---- */}
+      {concluidoPatients.length > 0 && (
+        <div className="inactive-section">
+          <button
+            className="inactive-section-toggle concluido-toggle"
+            onClick={() => setShowConcluidos(v => !v)}
+          >
+            <span className="inactive-section-label">
+              ✓ Sessões concluídas ({concluidoPatients.length})
+            </span>
+            <span className="inactive-section-chevron">
+              {showConcluidos ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {showConcluidos && (
+            <div className="card-list" style={{ marginTop: '8px' }}>
+              {concluidoPatients.map(patient => (
+                <PatientCard
+                  key={patient.id}
+                  patient={patient}
+                  concluido
+                  concluidoDate={concluidoDate(patient.id)}
+                  onEdit={() => handleEdit(patient)}
+                  onDelete={() => handleDelete(patient.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -153,7 +210,6 @@ export default function PatientsPage() {
                 <PatientCard
                   key={patient.id}
                   patient={patient}
-                  inactive={patient.active === false}
                   naoIniciou
                   avalDate={naoIniciouMap[patient.id]?.date}
                   onEdit={() => handleEdit(patient)}
@@ -195,8 +251,8 @@ function formatAvalDate(dateStr) {
   return `${DAY_ABBR[dt.getDay()]}, ${dt.getDate()} ${MONTH_ABBR[dt.getMonth()]}`
 }
 
-// ---- Card de paciente (ativo, inativo ou não iniciou) ----
-function PatientCard({ patient, inactive, naoIniciou, avalDate, onEdit, onDelete }) {
+// ---- Card de paciente (ativo, concluído, inativo ou não iniciou) ----
+function PatientCard({ patient, inactive, concluido, concluidoDate, naoIniciou, avalDate, onEdit, onDelete }) {
   return (
     <div className={`patient-card ${inactive ? 'patient-card--inactive' : ''}`}>
       <div className={`patient-avatar ${inactive ? 'patient-avatar--inactive' : ''}`}>
@@ -207,6 +263,7 @@ function PatientCard({ patient, inactive, naoIniciou, avalDate, onEdit, onDelete
         <div className="patient-name">
           {patient.name}
           {inactive && <span className="patient-inactive-badge">Desistiu</span>}
+          {concluido && <span className="patient-concluido-badge">✓ Concluiu</span>}
           {naoIniciou && <span className="patient-nao-iniciou-badge">⚠ Não iniciou</span>}
         </div>
         {patient.phone && (
@@ -215,6 +272,11 @@ function PatientCard({ patient, inactive, naoIniciou, avalDate, onEdit, onDelete
         {patient.convenio && CONVENIO_LABEL[patient.convenio] && (
           <div className="text-xs text-muted mt-1">
             {CONVENIO_LABEL[patient.convenio]}
+          </div>
+        )}
+        {concluido && concluidoDate && (
+          <div className="text-xs mt-1" style={{ color: 'var(--success)' }}>
+            Última sessão: {formatAvalDate(concluidoDate)}
           </div>
         )}
         {naoIniciou && avalDate && (

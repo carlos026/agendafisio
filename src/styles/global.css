@@ -1784,6 +1784,20 @@ body {
   vertical-align: middle;
 }
 
+.patient-concluido-badge {
+  display: inline-block;
+  margin-left: 7px;
+  background: var(--success-light);
+  color: #065f46;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
 /* ===== Seção "Desistiram (N)" na lista de pacientes ===== */
 .inactive-section {
   margin-top: 24px;
@@ -1800,6 +1814,13 @@ body {
   padding: 12px 4px 10px;
   cursor: pointer;
   gap: 8px;
+}
+
+.concluido-toggle {
+  border-top-color: var(--success-light);
+}
+.concluido-toggle .inactive-section-label {
+  color: #065f46;
 }
 
 .nao-iniciou-toggle {

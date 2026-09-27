@@ -78,3 +78,14 @@ export function getMonthAppointments(appointments, year, month) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`
   return appointments.filter(a => a.date.startsWith(prefix))
 }
+
+// Retorna o agendamento da última sessão do plano quando o paciente atingiu
+// a Qtd. de Sessões (nº da sessão >= total); caso contrário, null
+export function getLastPlanSession(patientId, appointments) {
+  const sessionApts = (appointments || []).filter(
+    a => a.patientId === patientId && a.appointmentType !== 'avaliacao' && a.status !== 'cancelled' && a.totalSessions
+  )
+  if (sessionApts.length === 0) return null
+  const last = sessionApts.reduce((max, a) => ((a.sessionNumber || 0) > (max.sessionNumber || 0) ? a : max))
+  return (last.sessionNumber || 0) >= last.totalSessions ? last : null
+}

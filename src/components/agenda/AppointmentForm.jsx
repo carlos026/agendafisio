@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import Modal from '../ui/Modal'
 import AvailableSlotsModal from './AvailableSlotsModal'
-import { getTodayString } from '../../utils/helpers'
+import { getTodayString, getLastPlanSession } from '../../utils/helpers'
 
 export default function AppointmentForm({ appointment, patients, appointments, settings, onSave, onClose }) {
   const serviceTypes = settings?.serviceTypes || []
 
   // Paciente já concluiu o plano de sessões (nº da última sessão atingiu a Qtd. de Sessões)?
   function reachedSessionLimit(patientId) {
-    const sessionApts = (appointments || []).filter(
-      a => a.patientId === patientId && a.appointmentType !== 'avaliacao' && a.status !== 'cancelled' && a.totalSessions
-    )
-    if (sessionApts.length === 0) return false
-    const maxSessionNumber = Math.max(0, ...sessionApts.map(a => a.sessionNumber || 0))
-    return maxSessionNumber >= sessionApts[0].totalSessions
+    return getLastPlanSession(patientId, appointments) !== null
   }
 
   // No dropdown de paciente ficam de fora: desistentes e quem já concluiu as sessões
@@ -48,11 +43,21 @@ export default function AppointmentForm({ appointment, patients, appointments, s
       setForm(prev => ({ ...prev, sessionNumber: '' }))
       return
     }
-    const pastCount = (appointments || []).filter(
-      a => a.patientId === form.patientId && a.status !== 'cancelled'
-    ).length
-    setForm(prev => ({ ...prev, sessionNumber: (pastCount + 1).toString() }))
+    // Continua a partir da última sessão registrada; sem sessões anteriores, usa a contagem de atendimentos
+    const lastSession = findLastSession(form.patientId)
+    const nextNumber = lastSession
+      ? lastSession.sessionNumber + 1
+      : (appointments || []).filter(a => a.patientId === form.patientId && a.status !== 'cancelled').length + 1
+    setForm(prev => ({ ...prev, sessionNumber: nextNumber.toString() }))
   }, [form.patientId, hasTotalSessions])
+
+  // Última sessão numerada do paciente (maior nº de sessão, ignorando avaliações e cancelados)
+  function findLastSession(patientId) {
+    return (appointments || [])
+      .filter(a => a.patientId === patientId && a.appointmentType !== 'avaliacao' &&
+                   a.status !== 'cancelled' && a.sessionNumber)
+      .reduce((last, a) => (!last || a.sessionNumber > last.sessionNumber ? a : last), null)
+  }
 
   function countPastAppointments(patientId) {
     return (appointments || []).filter(
@@ -90,6 +95,13 @@ export default function AppointmentForm({ appointment, patients, appointments, s
         if (field === 'patientId' || field === 'serviceType') {
           const price = lookupPrice(patientId, serviceType)
           if (price !== null) next.value = price.toString()
+        }
+
+        // Ao selecionar o paciente, repete a Qtd. de Sessões da última sessão
+        // (o nº da sessão = última + 1 é preenchido pelo useEffect acima)
+        if (field === 'patientId') {
+          const lastSession = findLastSession(value)
+          if (lastSession?.totalSessions) next.totalSessions = lastSession.totalSessions.toString()
         }
 
         // 1º atendimento de Fisioterapia Pélvica → marca como Avaliação automaticamente
