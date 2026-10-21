@@ -23,15 +23,15 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
 
   function handleSubmit() {
     if (!form.data)              { setError('Informe a data'); return }
-    if (!form.satInicial.trim()) { setError('Informe a SAT Inicial'); return }
-    if (!form.satFinal.trim())   { setError('Informe a SAT Final'); return }
-    if (!form.fcInicial.trim())  { setError('Informe a FC Inicial'); return }
-    if (!form.fcFinal.trim())    { setError('Informe a FC Final'); return }
     if (!form.texto.trim())      { setError('Informe a Evolução Clínica'); return }
     onSave({
       ...form,
-      paInicial: form.paInicial.trim() || '-',
-      paFinal:   form.paFinal.trim()   || '-',
+      paInicial:  form.paInicial.trim()  || '-',
+      paFinal:    form.paFinal.trim()    || '-',
+      satInicial: form.satInicial.trim() || '-',
+      satFinal:   form.satFinal.trim()   || '-',
+      fcInicial:  form.fcInicial.trim()  || '-',
+      fcFinal:    form.fcFinal.trim()    || '-',
     })
   }
 
@@ -92,7 +92,7 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
       <div className="evolution-section-label"  style={{ marginTop: '16px' }}>Saturação (SpO₂)</div>
       <div className="form-row">
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">SAT Inicial (%) *</label>
+          <label className="form-label">SAT Inicial (%)</label>
           <input
             type="text"
             className="form-input"
@@ -102,7 +102,7 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
           />
         </div>
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">SAT Final (%) *</label>
+          <label className="form-label">SAT Final (%)</label>
           <input
             type="text"
             className="form-input"
@@ -117,7 +117,7 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
       <div className="evolution-section-label" style={{ marginTop: '16px' }}>Frequência Cardíaca</div>
       <div className="form-row">
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">FC Inicial (bpm) *</label>
+          <label className="form-label">FC Inicial (bpm)</label>
           <input
             type="text"
             className="form-input"
@@ -127,7 +127,7 @@ export default function EvolutionModal({ appointment, patientName, onSave, onClo
           />
         </div>
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">FC Final (bpm) *</label>
+          <label className="form-label">FC Final (bpm)</label>
           <input
             type="text"
             className="form-input"
