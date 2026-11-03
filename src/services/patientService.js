@@ -23,6 +23,7 @@ export function add(data) {
     notes: data.notes?.trim() || '',
     convenio: data.convenio || '',
     active: data.active !== false,
+    naoIniciou: data.naoIniciou === true,
     createdAt: new Date().toISOString(),
   }
   setItem(KEYS.PATIENTS, [...patients, patient])
@@ -32,7 +33,7 @@ export function add(data) {
 export function update(id, data) {
   const patients = getAll().map(p =>
     p.id === id
-      ? { ...p, name: data.name.trim(), birthDate: data.birthDate || '', mainComplaint: data.mainComplaint?.trim() || '', phone: data.phone?.trim() || '', notes: data.notes?.trim() || '', convenio: data.convenio || '', active: data.active !== false }
+      ? { ...p, name: data.name.trim(), birthDate: data.birthDate || '', mainComplaint: data.mainComplaint?.trim() || '', phone: data.phone?.trim() || '', notes: data.notes?.trim() || '', convenio: data.convenio || '', active: data.active !== false, naoIniciou: data.naoIniciou === true }
       : p
   )
   setItem(KEYS.PATIENTS, patients)

@@ -35,10 +35,12 @@ export default function PatientsPage() {
     a => a.patientId === patientId && a.appointmentType !== 'avaliacao' && a.status !== 'cancelled'
   )
 
-  // Classifica cada paciente em um único grupo (prioridade: desistiu > concluiu > não iniciou > ativo)
+  // Classifica cada paciente em um único grupo (prioridade: desistiu > não iniciou manual > concluiu > não iniciou > ativo)
   // Concluiu = a última sessão do plano já aconteceu (data <= hoje)
+  // "Não iniciou" manual = situação escolhida na edição do paciente
   function getGroup(p) {
     if (p.active === false) return 'desistiu'
+    if (p.naoIniciou) return 'naoIniciou'
     const lastSession = getLastPlanSession(p.id, appointments)
     if (lastSession && lastSession.date <= today) return 'concluiu'
     if (naoIniciouMap[p.id] && !hasSessions(p.id)) return 'naoIniciou'

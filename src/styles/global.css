@@ -2018,6 +2018,11 @@ body {
   color: var(--white);
 }
 
+.patient-status-btn--nao-iniciou.active {
+  background: var(--warning);
+  color: var(--white);
+}
+
 .patient-status-btn--inativo.active {
   background: var(--gray-500);
   color: var(--white);

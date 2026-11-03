@@ -11,7 +11,8 @@ export default function PatientForm({ patient, onSave, onClose }) {
     phone:          patient?.phone          || '',
     notes:       patient?.notes       || '',
     convenio:    patient?.convenio    || '',
-    active:      patient?.active !== false, // novos pacientes sempre ativos
+    // Situação: 'ativo' | 'naoIniciou' | 'desistiu' — novos pacientes sempre ativos
+    status:      patient?.active === false ? 'desistiu' : patient?.naoIniciou ? 'naoIniciou' : 'ativo',
   })
   const [error, setError] = useState('')
 
@@ -23,7 +24,8 @@ export default function PatientForm({ patient, onSave, onClose }) {
   function handleSubmit() {
     if (!form.name.trim()) { setError('O nome é obrigatório'); return }
     if (!form.mainComplaint.trim())       { setError('A queixa principal é obrigatória'); return }
-    onSave(form)
+    const { status, ...rest } = form
+    onSave({ ...rest, active: status !== 'desistiu', naoIniciou: status === 'naoIniciou' })
   }
 
   return (
@@ -117,21 +119,33 @@ export default function PatientForm({ patient, onSave, onClose }) {
           <div className="patient-status-toggle">
             <button
               type="button"
-              className={`patient-status-btn patient-status-btn--ativo ${form.active ? 'active' : ''}`}
-              onClick={() => set('active', true)}
+              className={`patient-status-btn patient-status-btn--ativo ${form.status === 'ativo' ? 'active' : ''}`}
+              onClick={() => set('status', 'ativo')}
             >
               ✓ Ativo
             </button>
             <button
               type="button"
-              className={`patient-status-btn patient-status-btn--inativo ${!form.active ? 'active' : ''}`}
-              onClick={() => set('active', false)}
+              className={`patient-status-btn patient-status-btn--nao-iniciou ${form.status === 'naoIniciou' ? 'active' : ''}`}
+              onClick={() => set('status', 'naoIniciou')}
+            >
+              Não iniciou
+            </button>
+            <button
+              type="button"
+              className={`patient-status-btn patient-status-btn--inativo ${form.status === 'desistiu' ? 'active' : ''}`}
+              onClick={() => set('status', 'desistiu')}
             >
               Desistiu
             </button>
           </div>
 
-          {!form.active && (
+          {form.status === 'naoIniciou' && (
+            <div className="patient-status-warning">
+              Este paciente será movido para a seção "Não iniciaram sessões" na lista de pacientes.
+            </div>
+          )}
+          {form.status === 'desistiu' && (
             <div className="patient-status-warning">
               Este paciente não aparecerá na lista de ativos nem no formulário de novo agendamento. O histórico de atendimentos é preservado.
             </div>
