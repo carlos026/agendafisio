@@ -73,7 +73,9 @@ export default function AppointmentForm({ appointment, patients, appointments, s
       t => (typeof t === 'string' ? t : t.name) === serviceTypeName
     )
     if (!typeObj || typeof typeObj === 'string') return null
-    const price = patient.convenio === 'convenio' ? typeObj.convenioPrice : typeObj.particularPrice
+    const price = patient.convenio === 'convenio' ? typeObj.convenioPrice
+      : patient.convenio === 'particular' ? typeObj.particularPrice
+      : typeObj.customPrices?.[patient.convenio]
     return price > 0 ? price : null
   }
 

@@ -1,6 +1,6 @@
 import { KEYS, getObject, setItem } from './storageService'
 
-const DEFAULTS = { convenioPrice: 0, particularPrice: 0, serviceTypes: [], carimboText: '' }
+const DEFAULTS = { convenioPrice: 0, particularPrice: 0, serviceTypes: [], customConvenios: [], carimboText: '' }
 
 export function getSettings() {
   return { ...DEFAULTS, ...getObject(KEYS.SETTINGS) }

@@ -14,7 +14,7 @@ import {
   activeToLabel,
   isoToDisplay,
 } from '../utils/excelParser'
-import { calculateAge } from '../utils/helpers'
+import { calculateAge, getConvenioLabel } from '../utils/helpers'
 import * as patientService from './patientService'
 import * as appointmentService from './appointmentService'
 import * as settingsService from './settingsService'
@@ -22,7 +22,7 @@ import * as settingsService from './settingsService'
 // ---- buildAppointmentsSheet ----
 // Retorna array de objetos prontos para sheet_from_json.
 // Colunas seguem o formato da planilha original.
-function buildAppointmentsSheet(appointments, patients) {
+function buildAppointmentsSheet(appointments, patients, customConvenios) {
   const patientMap = {}
   patients.forEach(p => { patientMap[p.id] = p })
 
@@ -40,7 +40,7 @@ function buildAppointmentsSheet(appointments, patients) {
         'Tipo de Consulta':     appointmentTypeToLabel(apt.appointmentType),
         'Sessão':               apt.sessionNumber ?? '',
         'Total de Sessões':     apt.totalSessions ?? '',
-        'Convênio':             convenioToLabel(patient.convenio || ''),
+        'Convênio':             getConvenioLabel(patient.convenio, customConvenios) || convenioToLabel(patient.convenio || ''),
         'Valor (R$)':           apt.value ?? 0,
         'Pago':                 apt.paid ? 'Sim' : 'Não',
         'Não Iniciou Sessões':  apt.naoIniciouSessoes ? 'Sim' : 'Não',
@@ -50,7 +50,7 @@ function buildAppointmentsSheet(appointments, patients) {
 }
 
 // ---- buildPatientsSheet ----
-function buildPatientsSheet(patients) {
+function buildPatientsSheet(patients, customConvenios) {
   return patients.map(p => {
     const age = calculateAge(p.birthDate)
     return {
@@ -59,7 +59,7 @@ function buildPatientsSheet(patients) {
       'Idade':               age === null ? '' : `${age} anos`,
       'Queixa Principal':    p.mainComplaint || '',
       'Telefone':            p.phone || '',
-      'Convênio':            convenioToLabel(p.convenio || ''),
+      'Convênio':            getConvenioLabel(p.convenio, customConvenios) || convenioToLabel(p.convenio || ''),
       'Situação':            activeToLabel(p.active),
       'Observações':         p.notes || '',
       'Cadastrado em':       p.createdAt ? isoToDisplay(p.createdAt.split('T')[0]) : '',
@@ -103,12 +103,18 @@ function buildEvolutionsSheet(appointments, patients) {
 
 // ---- buildServiceTypesSheet ----
 // Tipos de atendimento configurados em Configurações, com seus preços padrão
-function buildServiceTypesSheet(serviceTypes) {
-  return (serviceTypes || []).map(t => ({
-    'Tipo':                     t.name,
-    'Preço Convênio (R$)':      t.convenioPrice ?? 0,
-    'Preço Particular (R$)':    t.particularPrice ?? 0,
-  }))
+function buildServiceTypesSheet(serviceTypes, customConvenios) {
+  return (serviceTypes || []).map(t => {
+    const row = {
+      'Tipo':                     t.name,
+      'Preço Convênio (R$)':      t.convenioPrice ?? 0,
+      'Preço Particular (R$)':    t.particularPrice ?? 0,
+    }
+    ;(customConvenios || []).forEach(c => {
+      row[`Preço ${c.name} (R$)`] = t.customPrices?.[c.id] ?? 0
+    })
+    return row
+  })
 }
 
 // ---- buildSummarySheet ----
@@ -163,19 +169,19 @@ export function exportToXLSX(fileName = 'agendafisio-export') {
   const wb = XLSX.utils.book_new()
 
   // Aba 1: Atendimentos
-  const aptRows = buildAppointmentsSheet(appointments, patients)
+  const aptRows = buildAppointmentsSheet(appointments, patients, settings.customConvenios)
   const wsApt = XLSX.utils.json_to_sheet(aptRows)
   applyColumnWidths(wsApt, aptRows)
   XLSX.utils.book_append_sheet(wb, wsApt, 'Atendimentos')
 
   // Aba 2: Pacientes
-  const patRows = buildPatientsSheet(patients)
+  const patRows = buildPatientsSheet(patients, settings.customConvenios)
   const wsPat = XLSX.utils.json_to_sheet(patRows)
   applyColumnWidths(wsPat, patRows)
   XLSX.utils.book_append_sheet(wb, wsPat, 'Pacientes')
 
   // Aba 3: Tipos de Atendimento (só se houver algum configurado)
-  const typeRows = buildServiceTypesSheet(settings.serviceTypes)
+  const typeRows = buildServiceTypesSheet(settings.serviceTypes, settings.customConvenios)
   if (typeRows.length > 0) {
     const wsTypes = XLSX.utils.json_to_sheet(typeRows)
     applyColumnWidths(wsTypes, typeRows)

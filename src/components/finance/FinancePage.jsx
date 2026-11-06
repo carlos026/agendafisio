@@ -9,8 +9,12 @@ import {
   getCurrentMonth,
 } from '../../utils/helpers'
 
+// Cores das séries dos convênios personalizados no gráfico
+const CUSTOM_CONVENIO_COLORS = ['#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6', '#64748b']
+
 export default function FinancePage() {
-  const { patients, appointments, refreshAppointments } = useApp()
+  const { patients, appointments, settings, refreshAppointments } = useApp()
+  const customConvenios = settings?.customConvenios || []
 
   // ---- view principal: mês ou pendências ----
   const [view, setView] = useState('month')
@@ -39,6 +43,7 @@ export default function FinancePage() {
   const breakdown = [
     { id: 'particular', label: 'Particular' },
     { id: 'convenio',   label: 'Convênio' },
+    ...customConvenios.map(c => ({ id: c.id, label: c.name })),
     { id: '',           label: 'Não informado' },
   ]
     .map(group => {
@@ -61,6 +66,9 @@ export default function FinancePage() {
     type: [
       { key: 'particular', label: 'Particular', color: 'var(--primary)' },
       { key: 'convenio',   label: 'Convênio',   color: 'var(--primary-dark)' },
+      ...customConvenios.map((c, i) => ({
+        key: c.id, label: c.name, color: CUSTOM_CONVENIO_COLORS[i % CUSTOM_CONVENIO_COLORS.length],
+      })),
     ],
   }
   const MONTH_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -77,6 +85,9 @@ export default function FinancePage() {
       pending:    sum(apts.filter(a => !a.paid)),
       particular: sum(paid.filter(a => convenioOf(a.patientId) === 'particular')),
       convenio:   sum(paid.filter(a => convenioOf(a.patientId) === 'convenio')),
+      ...Object.fromEntries(customConvenios.map(c => [
+        c.id, sum(paid.filter(a => convenioOf(a.patientId) === c.id)),
+      ])),
     }
   })
   const chartMax = Math.max(0, ...chartData.flatMap(d => chartSeries.map(s => d[s.key])))

@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import Modal from '../ui/Modal'
+import { useApp } from '../../App'
 
-export default function PatientForm({ patient, onSave, onClose }) {
+export default function PatientForm({ patient, concluded = false, onSave, onClose }) {
+  const { settings } = useApp()
+  const customConvenios = settings?.customConvenios || []
   const isEditing = Boolean(patient)
 
   const [form, setForm] = useState({
@@ -13,6 +16,7 @@ export default function PatientForm({ patient, onSave, onClose }) {
     convenio:    patient?.convenio    || '',
     // Situação: 'ativo' | 'naoIniciou' | 'desistiu' — novos pacientes sempre ativos
     status:      patient?.active === false ? 'desistiu' : patient?.naoIniciou ? 'naoIniciou' : 'ativo',
+    hideHistory: patient?.hideHistory === true,
   })
   const [error, setError] = useState('')
 
@@ -25,8 +29,16 @@ export default function PatientForm({ patient, onSave, onClose }) {
     if (!form.name.trim()) { setError('O nome é obrigatório'); return }
     if (!form.mainComplaint.trim())       { setError('A queixa principal é obrigatória'); return }
     const { status, ...rest } = form
-    onSave({ ...rest, active: status !== 'desistiu', naoIniciou: status === 'naoIniciou' })
+    onSave({
+      ...rest,
+      active: status !== 'desistiu',
+      naoIniciou: status === 'naoIniciou',
+      hideHistory: canHideHistory && form.hideHistory,
+    })
   }
+
+  // Ocultar do histórico da agenda só faz sentido para quem desistiu ou já concluiu as sessões
+  const canHideHistory = form.status === 'desistiu' || (concluded && form.status !== 'naoIniciou')
 
   return (
     <Modal
@@ -97,6 +109,9 @@ export default function PatientForm({ patient, onSave, onClose }) {
           <option value="">Não informado</option>
           <option value="convenio">Convênio</option>
           <option value="particular">Particular</option>
+          {customConvenios.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
       </div>
 
@@ -149,6 +164,19 @@ export default function PatientForm({ patient, onSave, onClose }) {
             <div className="patient-status-warning">
               Este paciente não aparecerá na lista de ativos nem no formulário de novo agendamento. O histórico de atendimentos é preservado.
             </div>
+          )}
+
+          {canHideHistory && (
+            <label className="checkbox-group" style={{ marginTop: '12px' }}>
+              <input
+                type="checkbox"
+                checked={form.hideHistory}
+                onChange={e => set('hideHistory', e.target.checked)}
+              />
+              <span style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--gray-700)' }}>
+                Ocultar sessões do histórico da agenda
+              </span>
+            </label>
           )}
         </div>
       )}

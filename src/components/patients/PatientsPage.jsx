@@ -1,10 +1,8 @@
 import React, { useState } from 'react'
 import { useApp } from '../../App'
 import * as patientService from '../../services/patientService'
-import { getInitials, getTodayString, getLastPlanSession } from '../../utils/helpers'
+import { getInitials, getTodayString, getLastPlanSession, getConvenioLabel } from '../../utils/helpers'
 import PatientForm from './PatientForm'
-
-const CONVENIO_LABEL = { convenio: 'Convênio', particular: 'Particular' }
 
 export default function PatientsPage() {
   const { patients, appointments, refreshPatients } = useApp()
@@ -236,6 +234,7 @@ export default function PatientsPage() {
       {showForm && (
         <PatientForm
           patient={editing}
+          concluded={editing ? getGroup(editing) === 'concluiu' : false}
           onSave={handleSave}
           onClose={closeForm}
         />
@@ -255,6 +254,8 @@ function formatAvalDate(dateStr) {
 
 // ---- Card de paciente (ativo, concluído, inativo ou não iniciou) ----
 function PatientCard({ patient, inactive, concluido, concluidoDate, naoIniciou, avalDate, onEdit, onDelete }) {
+  const { settings } = useApp()
+  const convenioLabel = getConvenioLabel(patient.convenio, settings?.customConvenios)
   return (
     <div className={`patient-card ${inactive ? 'patient-card--inactive' : ''}`}>
       <div className={`patient-avatar ${inactive ? 'patient-avatar--inactive' : ''}`}>
@@ -271,9 +272,9 @@ function PatientCard({ patient, inactive, concluido, concluidoDate, naoIniciou, 
         {patient.phone && (
           <div className="patient-phone">📱 {patient.phone}</div>
         )}
-        {patient.convenio && CONVENIO_LABEL[patient.convenio] && (
+        {convenioLabel && (
           <div className="text-xs text-muted mt-1">
-            {CONVENIO_LABEL[patient.convenio]}
+            {convenioLabel}
           </div>
         )}
         {concluido && concluidoDate && (

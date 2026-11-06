@@ -89,3 +89,11 @@ export function getLastPlanSession(patientId, appointments) {
   const last = sessionApts.reduce((max, a) => ((a.sessionNumber || 0) > (max.sessionNumber || 0) ? a : max))
   return (last.sessionNumber || 0) >= last.totalSessions ? last : null
 }
+
+// Rótulo do convênio de um paciente: 'convenio' / 'particular' nativos ou
+// o nome de um convênio personalizado (Configurações → Tipos de Atendimento)
+export function getConvenioLabel(convenio, customConvenios) {
+  if (convenio === 'convenio') return 'Convênio'
+  if (convenio === 'particular') return 'Particular'
+  return (customConvenios || []).find(c => c.id === convenio)?.name || ''
+}

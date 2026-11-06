@@ -24,6 +24,7 @@ export function add(data) {
     convenio: data.convenio || '',
     active: data.active !== false,
     naoIniciou: data.naoIniciou === true,
+    hideHistory: data.hideHistory === true,
     createdAt: new Date().toISOString(),
   }
   setItem(KEYS.PATIENTS, [...patients, patient])
@@ -33,7 +34,7 @@ export function add(data) {
 export function update(id, data) {
   const patients = getAll().map(p =>
     p.id === id
-      ? { ...p, name: data.name.trim(), birthDate: data.birthDate || '', mainComplaint: data.mainComplaint?.trim() || '', phone: data.phone?.trim() || '', notes: data.notes?.trim() || '', convenio: data.convenio || '', active: data.active !== false, naoIniciou: data.naoIniciou === true }
+      ? { ...p, name: data.name.trim(), birthDate: data.birthDate || '', mainComplaint: data.mainComplaint?.trim() || '', phone: data.phone?.trim() || '', notes: data.notes?.trim() || '', convenio: data.convenio || '', active: data.active !== false, naoIniciou: data.naoIniciou === true, hideHistory: data.hideHistory === true }
       : p
   )
   setItem(KEYS.PATIENTS, patients)
