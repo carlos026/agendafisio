@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import Modal from '../ui/Modal'
 import { useApp } from '../../App'
 import { exportEvolutionReportPDF } from '../../services/evolutionPdfExport'
+import { getTodayString, getLastPlanSession } from '../../utils/helpers'
 
 const WDAY  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const MONTH = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -17,9 +18,18 @@ export default function EvolutionHistoryModal({ appointments, patients, onClose 
   const [patientId, setPatientId] = useState('')
   const [exportError, setExportError] = useState('')
 
-  // Pacientes que têm ao menos uma evolução registrada
+  // Pacientes com "ocultar do histórico" que desistiram ou já concluíram as sessões
+  const today = getTodayString()
+  const isHidden = p => {
+    if (!p.hideHistory) return false
+    if (p.active === false) return true
+    const last = getLastPlanSession(p.id, appointments)
+    return last !== null && last.date <= today
+  }
+
+  // Pacientes que têm ao menos uma evolução registrada (exceto os ocultos)
   const patientsWithEvolution = patients
-    .filter(p => appointments.some(a => a.patientId === p.id && a.evolution))
+    .filter(p => !isHidden(p) && appointments.some(a => a.patientId === p.id && a.evolution))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const evolutions = patientId

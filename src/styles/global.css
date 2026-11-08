@@ -1194,6 +1194,25 @@ body {
   letter-spacing: 0.03em;
 }
 
+.service-type-price-label--removable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.service-type-price-label--removable .service-type-remove {
+  padding: 0 4px;
+  font-size: 0.7rem;
+}
+
+.service-type-add-convenio {
+  width: 100%;
+  margin-top: 10px;
+  border: 1.5px dashed var(--gray-300);
+  color: var(--primary);
+}
+
 .service-type-add {
   display: flex;
   gap: 8px;

@@ -3,11 +3,14 @@ import * as settingsService from '../../services/settingsService'
 import * as patientService from '../../services/patientService'
 import { useApp } from '../../App'
 import ClearDataModal from './ClearDataModal'
+import ConvenioModal from './ConvenioModal'
 
 const priceToInput = v => (v > 0 ? v.toString() : '')
 
-function normalizeTypes(raw) {
-  return (raw || []).map(t =>
+// Cada tipo só exibe os convênios presentes em customPrices (chave = id do convênio).
+// Convênios antigos que não pertencem a nenhum tipo são vinculados a todos, para poderem ser editados/removidos.
+function normalizeTypes(raw, customConvenios = []) {
+  const types = (raw || []).map(t =>
     typeof t === 'string'
       ? { name: t, convenioPrice: '', particularPrice: '', customPrices: {} }
       : {
@@ -19,6 +22,12 @@ function normalizeTypes(raw) {
           ),
         }
   )
+  const orphans = customConvenios.filter(c => !types.some(t => c.id in t.customPrices))
+  if (orphans.length === 0) return types
+  return types.map(t => ({
+    ...t,
+    customPrices: { ...t.customPrices, ...Object.fromEntries(orphans.map(c => [c.id, ''])) },
+  }))
 }
 
 function serializeTypes(types) {
@@ -40,10 +49,9 @@ export default function SettingsPage() {
   const { refreshSettings, refreshPatients, refreshAppointments, patients, appointments, setPage } = useApp()
   const initial = settingsService.getSettings()
 
-  const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes))
+  const [serviceTypes, setServiceTypes] = useState(() => normalizeTypes(initial.serviceTypes, initial.customConvenios))
   const [customConvenios, setCustomConvenios] = useState(() => initial.customConvenios || [])
-  const [newConvenio, setNewConvenio] = useState('')
-  const [convenioError, setConvenioError] = useState('')
+  const [convenioTypeIndex, setConvenioTypeIndex] = useState(null) // tipo que está recebendo novo convênio
   const [newType, setNewType] = useState('')
   const [typeError, setTypeError] = useState('')
   const [carimboText, setCarimboText] = useState(initial.carimboText || '')
@@ -98,35 +106,44 @@ export default function SettingsPage() {
     ))
   }
 
-  function handleAddConvenio() {
-    const trimmed = newConvenio.trim()
-    if (!trimmed) { setConvenioError('Informe um nome para o convênio'); return }
-    const lower = trimmed.toLowerCase()
-    if (lower === 'convênio' || lower === 'convenio' || lower === 'particular' ||
-        customConvenios.some(c => c.name.toLowerCase() === lower)) {
-      setConvenioError('Esse convênio já existe')
-      return
-    }
-    const updated = [...customConvenios, { id: generateConvenioId(), name: trimmed }]
-    setCustomConvenios(updated)
-    settingsService.saveSettings({ customConvenios: updated })
+  // Cadastra o convênio (ou reaproveita um existente com o mesmo nome) e define o valor do tipo selecionado
+  function handleSaveConvenio({ name, value }) {
+    const existing = customConvenios.find(c => c.name.toLowerCase() === name.toLowerCase())
+    const convenio = existing || { id: generateConvenioId(), name }
+    const updatedConvenios = existing ? customConvenios : [...customConvenios, convenio]
+    const updatedTypes = serviceTypes.map((t, i) =>
+      i === convenioTypeIndex
+        ? { ...t, customPrices: { ...t.customPrices, [convenio.id]: value } }
+        : t
+    )
+    setCustomConvenios(updatedConvenios)
+    setServiceTypes(updatedTypes)
+    settingsService.saveSettings({
+      customConvenios: updatedConvenios,
+      serviceTypes: serializeTypes(updatedTypes),
+    })
     refreshSettings()
-    setNewConvenio('')
-    setConvenioError('')
+    setConvenioTypeIndex(null)
   }
 
-  function handleRemoveConvenio(convenio) {
-    const affected = patients.filter(p => p.convenio === convenio.id)
-    const msg = affected.length > 0
-      ? `Remover o convênio "${convenio.name}"? ${affected.length} paciente(s) ficarão como "Não informado".`
-      : `Remover o convênio "${convenio.name}"?`
+  // Remove o convênio do tipo informado; se nenhum outro tipo o usa, remove o convênio por completo
+  function handleRemoveConvenio(convenio, typeIndex) {
+    const typeName = serviceTypes[typeIndex].name
+    const usedElsewhere = serviceTypes.some((t, i) => i !== typeIndex && convenio.id in (t.customPrices || {}))
+    const affected = usedElsewhere ? [] : patients.filter(p => p.convenio === convenio.id)
+
+    let msg = `Remover o convênio "${convenio.name}" do tipo "${typeName}"?`
+    if (!usedElsewhere && affected.length > 0) {
+      msg += ` Ele não é usado em outros tipos; ${affected.length} paciente(s) ficarão como "Não informado".`
+    }
     if (!window.confirm(msg)) return
 
     affected.forEach(p => patientService.update(p.id, { ...p, convenio: '' }))
     if (affected.length > 0) refreshPatients()
 
-    const updatedConvenios = customConvenios.filter(c => c.id !== convenio.id)
-    const updatedTypes = serviceTypes.map(t => {
+    const updatedConvenios = usedElsewhere ? customConvenios : customConvenios.filter(c => c.id !== convenio.id)
+    const updatedTypes = serviceTypes.map((t, i) => {
+      if (i !== typeIndex) return t
       const { [convenio.id]: _removed, ...rest } = t.customPrices || {}
       return { ...t, customPrices: rest }
     })
@@ -156,42 +173,6 @@ export default function SettingsPage() {
 
         <div className="settings-info">
           As alterações de preço se aplicam apenas a novos agendamentos. Registros anteriores não são afetados.
-        </div>
-
-        <div style={{ marginTop: '16px' }}>
-          <div className="service-type-price-label">Outros convênios</div>
-          {customConvenios.length > 0 && (
-            <ul className="service-type-list" style={{ margin: '8px 0' }}>
-              {customConvenios.map(c => (
-                <li key={c.id} className="service-type-item">
-                  <div className="service-type-header">
-                    <span className="service-type-label">{c.name}</span>
-                    <button
-                      className="service-type-remove"
-                      onClick={() => handleRemoveConvenio(c)}
-                      title="Remover convênio"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="service-type-add" style={{ marginTop: customConvenios.length > 0 ? 0 : '8px' }}>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Ex: Unimed"
-              value={newConvenio}
-              onChange={e => { setNewConvenio(e.target.value); setConvenioError('') }}
-              onKeyDown={e => e.key === 'Enter' && handleAddConvenio()}
-            />
-            <button className="btn btn-primary" onClick={handleAddConvenio}>
-              Adicionar
-            </button>
-          </div>
-          {convenioError && <div className="alert-error" style={{ marginTop: '8px' }}>{convenioError}</div>}
         </div>
 
         {serviceTypes.length > 0 && (
@@ -235,9 +216,18 @@ export default function SettingsPage() {
                       onBlur={() => handlePriceBlur(index)}
                     />
                   </div>
-                  {customConvenios.map(c => (
+                  {customConvenios.filter(c => c.id in (type.customPrices || {})).map(c => (
                     <div key={c.id}>
-                      <div className="service-type-price-label">{c.name} (R$)</div>
+                      <div className="service-type-price-label service-type-price-label--removable">
+                        <span>{c.name} (R$)</span>
+                        <button
+                          className="service-type-remove"
+                          onClick={() => handleRemoveConvenio(c, index)}
+                          title={`Remover convênio ${c.name} deste tipo`}
+                        >
+                          ✕
+                        </button>
+                      </div>
                       <input
                         type="number"
                         className="form-input"
@@ -251,6 +241,12 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+                <button
+                  className="btn btn-ghost btn-sm service-type-add-convenio"
+                  onClick={() => setConvenioTypeIndex(index)}
+                >
+                  ＋ Novo convênio
+                </button>
               </li>
             ))}
           </ul>
@@ -327,6 +323,16 @@ export default function SettingsPage() {
           <div className="ie-export-msg ie-export-msg--success">{clearedMsg}</div>
         )}
       </div>
+
+      {convenioTypeIndex !== null && serviceTypes[convenioTypeIndex] && (
+        <ConvenioModal
+          typeName={serviceTypes[convenioTypeIndex].name}
+          customConvenios={customConvenios}
+          typeConvenioIds={Object.keys(serviceTypes[convenioTypeIndex].customPrices || {})}
+          onSave={handleSaveConvenio}
+          onClose={() => setConvenioTypeIndex(null)}
+        />
+      )}
 
       {showClearData && (
         <ClearDataModal

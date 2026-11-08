@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useApp } from '../../App'
 import * as appointmentService from '../../services/appointmentService'
-import { formatCurrency, getTodayString, getRelativeDateLabel, getLastPlanSession } from '../../utils/helpers'
+import { formatCurrency, getTodayString, getRelativeDateLabel } from '../../utils/helpers'
 import AppointmentForm from './AppointmentForm'
 import WeeklyView from './WeeklyView'
 import DailyBoardView from './DailyBoardView'
@@ -48,21 +48,8 @@ export default function AgendaPage() {
   }
 
   // ── dados da lista ──
-  // Pacientes com "ocultar do histórico" que desistiram ou já concluíram as sessões
-  const hiddenPatientIds = new Set(
-    patients
-      .filter(p => {
-        if (!p.hideHistory) return false
-        if (p.active === false) return true
-        const last = getLastPlanSession(p.id, appointments)
-        return last !== null && last.date <= today
-      })
-      .map(p => p.id)
-  )
-
   const historyBase = appointments.filter(
-    a => (a.date < today || a.status === 'completed' || a.status === 'cancelled')
-      && !hiddenPatientIds.has(a.patientId)
+    a => a.date < today || a.status === 'completed' || a.status === 'cancelled'
   )
   const availableMonths = [...new Set(historyBase.map(a => a.date.slice(0, 7)))]
     .sort((a, b) => b.localeCompare(a))

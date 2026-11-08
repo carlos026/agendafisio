@@ -37,7 +37,7 @@ export default function PatientForm({ patient, concluded = false, onSave, onClos
     })
   }
 
-  // Ocultar do histórico da agenda só faz sentido para quem desistiu ou já concluiu as sessões
+  // Ocultar do histórico de evoluções só faz sentido para quem desistiu ou já concluiu as sessões
   const canHideHistory = form.status === 'desistiu' || (concluded && form.status !== 'naoIniciou')
 
   return (
@@ -174,7 +174,7 @@ export default function PatientForm({ patient, concluded = false, onSave, onClos
                 onChange={e => set('hideHistory', e.target.checked)}
               />
               <span style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--gray-700)' }}>
-                Ocultar sessões do histórico da agenda
+                Ocultar do histórico de evoluções
               </span>
             </label>
           )}
